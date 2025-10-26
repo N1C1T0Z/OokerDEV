@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Projets - Ooker Dev</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo-text">Ooker Dev</div>
+
+            <ul class="nav-links">
+                <li><a href="/home">Accueil</a></li>
+                <li><a href="/soon">Suggestions</a></li>
+                <li><a href="/project" class="active">Projet</a></li>
+                <li><a href="/soon">Recrutement</a></li>
+                <li><a href="/socialmedia">Social Média</a></li>
+            </ul>
+
+            <div class="logo-img">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Ooker Dev">
+            </div>
+        </nav>
+    </header>
+
+    <main class="hero">
+        <h1>Projets</h1>
+        <ul class="project-list">
+            {% for p in projects %}
+                <li>
+                    <a href="/project/{{ p }}">{{ p }}</a>
+                    {% if is_admin %}
+                        <button class="delete-btn" data-project="{{ p }}">×</button>
+                    {% endif %}
+                </li>
+            {% else %}
+                <li>Aucun projet pour l’instant.</li>
+            {% endfor %}
+        </ul>
+
+        {% if is_admin %}
+        <button id="addProjectBtn" class="add-btn">+</button>
+        {% endif %}
+    </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const addBtn = document.getElementById("addProjectBtn");
+    if (addBtn) {
+        addBtn.addEventListener("click", async () => {
+            const name = prompt("Nom du projet à créer (ex: test) :");
+            if (!name) return;
+
+            const res = await fetch("/add_project", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                alert("Projet créé !");
+                window.location.href = data.url;
+            } else {
+                alert("Erreur : " + (data.error || "Inconnue"));
+            }
+        });
+    }
+
+    // Suppression
+    const deleteButtons = document.querySelectorAll(".delete-btn");
+    deleteButtons.forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const project = btn.dataset.project;
+            if (!confirm(`Supprimer le projet "${project}" ? Cette action est irréversible !`)) return;
+
+            const res = await fetch("/delete_project", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: project })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert("Projet supprimé !");
+                window.location.reload();
+            } else {
+                alert("Erreur : " + (data.error || "Inconnue"));
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

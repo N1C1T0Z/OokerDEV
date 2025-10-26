@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Erreur 404 - Ooker Dev</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('favicon') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo-text">Ooker Dev</div>
+
+            <ul class="nav-links">
+                <li><a href="/home">Accueil</a></li>
+                <li><a href="/soon">Suggestions</a></li>
+                <li><a href="/project">Projets</a></li>
+                <li><a href="/soon">Recrutement</a></li>
+                <li><a href="/socialmedia">Social Média</a></li>
+            </ul>
+
+            <div class="logo-img">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Ooker Dev">
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1 class="typewriter">
+                <span id="type-text"></span><span id="cursor" class="cursor">|</span>
+            </h1>
+            <p class="subtitle">Rien par là pour l'instant...</p>
+        </section>
+    </main>
+
+    <footer>
+        <text>© 2025 Ooker Dev. Tous droits réservés.</text>
+        <text>contact@ookerdev.site</text>
+    </footer>
+
+<script>
+(function() {
+    const textes = ["Erreur 404"];
+    const speed = 120;
+    const el = document.getElementById('type-text');
+    let i = 0;
+
+    function type() {
+        if (i < textes[0].length) {
+            el.textContent += textes[0].charAt(i);
+            i++;
+            setTimeout(type, speed);
+        }
+    }
+    type();
+})();
+</script>
+</body>
+</html>

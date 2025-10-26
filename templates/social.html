@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Réseaux - Ooker Dev</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('favicon') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo-text">Ooker Dev</div>
+
+            <ul class="nav-links">
+                <li><a href="/home">Accueil</a></li>
+                <li><a href="/soon">Suggestions</a></li>
+                <li><a href="/project">Projets</a></li>
+                <li><a href="/soon">Recrutement</a></li>
+                <li><a href="/socialmedia" class="active">Social Média</a></li>
+            </ul>
+
+            <div class="logo-img">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Ooker Dev">
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Nos Réseaux</h1>
+            <p class="subtitle">Rejoins-nous sur nos plateformes officielles :</p>
+        </section>
+
+        <section class="social-text">
+            <p><strong>Discord :</strong> <a href="https://discord.gg/btmu9pKwV3" target="_blank">Ici</a></p>
+            <p><strong>TikTok :</strong> <a href="https://www.tiktok.com/@n1c1t0z" target="_blank">Ici</a></p>
+            <p><strong>YouTube :</strong> <a href="https://www.youtube.com/@n1c1t0z" target="_blank">Ici</a></p>
+        </section>
+    </main>
+
+    <footer>
+        <text>© 2025 Ooker Dev. Tous droits réservés.</text>
+        <text>contact@ookerdev.site</text>
+    </footer>
+</body>
+</html>

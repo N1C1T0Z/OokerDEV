@@ -1,0 +1,149 @@
+/* Thème blanc sur gris très foncé */
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background-color: #121212; /* gris très foncé */
+    color: #ffffff;
+    font-family: "Poppins", sans-serif;
+}
+
+/* Barre de navigation */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #ffffff33;
+    position: sticky;
+    top: 0;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: 500;
+    transition: opacity 0.3s ease;
+}
+
+.nav-links a:hover,
+.nav-links a.active { opacity: 0.6; }
+
+.logo-img img {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+h1 {
+    text-size-adjust: 60px;
+}
+
+/* Section principale */
+.hero { text-align: center; margin-top: 15vh; }
+
+/* Projet list */
+.project-list { list-style: none; padding: 0; font-size: 1.3rem; }
+.project-list li { margin: 0.5rem 0; }
+.project-list a {
+    color: #fff; text-decoration: none;
+    border-bottom: 1px solid #fff3;
+    transition: opacity 0.2s;
+}
+.project-list a:hover { opacity: 0.6; }
+
+/* Boutons */
+.add-btn {
+    margin-top: 2rem;
+    background-color: #1a1a1a;
+    color: #fff;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.add-btn:hover { background-color: #2a2a2a; }
+
+.delete-btn {
+    margin-left: 10px;
+    background-color: #ff0000;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0 6px;
+    font-size: 1rem;
+    transition: background 0.2s;
+}
+.delete-btn:hover { background-color: #cc0000; }
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 1.5rem 0;
+    background-color: #1a1a1a;
+    border-top: 1px solid #ffffff33;
+    margin-top: 5rem;
+    color: #ffffff;
+}
+
+.about {
+    text-align: center;
+}
+
+.custom-content {
+    max-width: 800px;
+    margin: 4rem auto;
+    padding: 2rem;
+    background-color: #1c1c1c;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #00000044;
+    text-align: left;
+}
+
+.custom-content h2 {
+    color: #ffffff;
+    margin-bottom: 1rem;
+    font-size: 1.8rem;
+}
+
+.custom-content p {
+    color: #dddddd;
+    line-height: 1.6;
+    font-size: 1.1rem;
+}
+.social-text {
+    text-align: center;
+    margin-top: 3rem;
+    font-size: 1.2rem;
+}
+
+.social-text a {
+    color: white;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+.social-text a:hover {
+    color: #ff5757;
+}
