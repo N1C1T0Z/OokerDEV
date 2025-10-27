@@ -112,16 +112,26 @@ def soon():
 def social():
     return render_template('social.html')
 
+NOVA_FILE = os.path.join(BASE_DIR, "data/nova_projects.json")
+
+def load_nova_projects():
+    if not os.path.exists(NOVA_FILE):
+        return {}  # retourne un dict vide si aucun fichier
+    with open(NOVA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)  # doit être un dict : { "NomProjet": { "link": "...", "description": "...", "tags": [...] } }
+
 @app.route('/nova-life')
 def nova():
     admin_ips = load_admin_ips()
     user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     is_admin = user_ip in admin_ips
 
-    return render_template('nova.html', is_admin=is_admin)
+    projects = load_nova_projects()  # <-- on fournit maintenant la variable
+    return render_template('nova.html', is_admin=is_admin, projects=projects)
 
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
