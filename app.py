@@ -135,10 +135,50 @@ def nova():
 def page_not_found(e):
     return render_template('404.html'), 404
 
+import traceback
+
+AI_UPLOAD_DIR = os.path.join(BASE_DIR, "data/ai_uploads")
+if not os.path.exists(AI_UPLOAD_DIR):
+    os.makedirs(AI_UPLOAD_DIR)
+
+@app.route('/ai', methods=['GET', 'POST'])
+def ai():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return render_template('ai.html', error="Aucun fichier sélectionné", output=None)
+        
+        file = request.files['file']
+        if file.filename == '':
+            return render_template('ai.html', error="Nom de fichier vide", output=None)
+        
+        if not file.filename.endswith('.py'):
+            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None)
+        
+        file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
+        file.save(file_path)
+
+        # Lire et exécuter le code
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                code = f.read()
+            
+            # Exécution dans un namespace limité
+            local_vars = {}
+            exec(code, {"__builtins__": {}}, local_vars)
+
+            output = "Code exécuté sans erreurs."
+            return render_template('ai.html', output=output, error=None)
+        except Exception as e:
+            tb = traceback.format_exc()
+            return render_template('ai.html', output=None, error=tb)
+    
+    # GET request
+    return render_template('ai.html', output=None, error=None)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
 
