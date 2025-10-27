@@ -114,8 +114,14 @@ def social():
 
 @app.route('/nova-life')
 def nova():
-    return render_template('nova.html')
+    admin_ips = load_admin_ips()
+    user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    is_admin = user_ip in admin_ips
+
+    return render_template('nova.html', is_admin=is_admin)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
