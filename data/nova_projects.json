@@ -1,1 +1,17 @@
-{}
+{
+    "DiscordStatut": {
+        "link": "https://github.com/N1C1T0Z/DiscordStatut",
+        "description": "Tout dans README",
+        "tags": ["rp", "officiel"]
+    },
+    "N1ZMedical": {
+        "link": "https://github.com/N1C1T0Z/N1ZMedical",
+        "description": "Tout dans README",
+        "tags": ["rp", "autre", "officiel"]
+    }
+    "GrenadePlugin": {
+      "link": "https://github.com/N1C1T0Z/GrenadePlugin",
+      "description": "Tout dans le README",
+      "tags": ["autre", "pvp", "officiel"]
+    }
+}
