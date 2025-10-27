@@ -4,6 +4,91 @@
     <meta charset="UTF-8">
     <title>OIIA Executor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Quelques ajouts pour améliorer le rendu */
+        .ai-section {
+            text-align: center;
+            max-width: 900px;
+            margin: 80px auto;
+            background-color: #1c1c1c;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .ai-section h1 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        .ai-section p {
+            color: #ccc;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        pre {
+            text-align: left;
+            background: #101010;
+            padding: 1rem;
+            border-radius: 10px;
+            color: #eee;
+            font-family: monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border-left: 4px solid #7b68ee;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .success {
+            color: #4ef037;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            background: #222;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 1rem;
+        }
+
+        input[type="file"]::-webkit-file-upload-button {
+            background: #7b68ee;
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: #7b68ee;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            padding: 0.6rem 0.9rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-btn:hover {
+            background: #9a85ff;
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar -->
@@ -16,34 +101,31 @@
         </ul>
     </div>
 
-    <!-- Bloc principal -->
-    <section class="custom-content ai-section">
+    <!-- Contenu principal -->
+    <section class="ai-section">
         <h1>Exécuter un fichier Python</h1>
-        <p style="text-align:center;color:#ccc;margin-bottom:2rem;">
-            Choisis un fichier <strong>.py</strong> à tester. L’IA l’exécutera et renverra les erreurs détectées.
-        </p>
+        <p>Choisis un fichier <strong>.py</strong> à tester. L’IA analysera et t’indiquera comment corriger les erreurs.</p>
 
-        <form action="/ai" method="POST" enctype="multipart/form-data" style="text-align:center;">
-            <input type="file" name="file" accept=".py" required style="margin-bottom:1rem;">
+        <form action="/ai" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".py" required>
             <button type="submit" class="add-btn" title="Exécuter">▶</button>
         </form>
 
         {% if error %}
             <div style="margin-top:2rem;">
-                <h3 class="error">Erreurs détectées :</h3>
-                <pre>{{ error }}</pre>
+                <h3 class="error">⚠️ Erreur détectée</h3>
+                <pre>{{ error | safe }}</pre>
             </div>
         {% endif %}
 
         {% if output %}
             <div style="margin-top:2rem;">
-                <h3 class="success">Résultat :</h3>
+                <h3 class="success">✅ Résultat :</h3>
                 <pre>{{ output }}</pre>
             </div>
         {% endif %}
     </section>
 
-    <!-- Footer -->
     <footer>
         &copy; 2025 OIIA by Ooker DEV. Tous droits réservés.
     </footer>
