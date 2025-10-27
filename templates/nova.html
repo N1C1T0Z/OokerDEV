@@ -91,6 +91,33 @@
         .modal-content button:hover {
             background: #666;
         }
+        .add-btn {
+            margin: 2rem auto;
+            display: block;
+            background-color: #1a1a1a;
+            color: #fff;
+            border: 1px solid #fff;
+            border-radius: 50%;
+            font-size: 2rem;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .add-btn:hover { background-color: #2a2a2a; }
+        .delete-btn {
+            margin-top: 0.5rem;
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 6px;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .delete-btn:hover { background-color: #cc0000; }
     </style>
 </head>
 <body>
@@ -98,7 +125,7 @@
         <div class="logo-text">Ooker Dev</div>
     </header>
 
-    <div class="hero">
+    <main class="hero">
         <h1>Projets Nova-Life</h1>
 
         <div class="search-bar">
@@ -106,15 +133,11 @@
         </div>
 
         <div class="project-container" id="projectContainer">
-            {% for project, link in projects.items() %}
-            <div class="project-card" data-name="{{ project }}" data-tags="{{ link.tags if link.tags else '' }}">
-                <h3><a href="{{ link }}" style="color: white; text-decoration: none;" target="_blank">{{ project }}</a></h3>
-                <p>{{ link.description if link.description else 'Aucune description disponible.' }}</p>
-                {% if link.tags %}
-                <span class="tag">{{ link.tags|join(', ') }}</span>
-                {% else %}
-                <span class="tag">aucun</span>
-                {% endif %}
+            {% for project, info in projects.items() %}
+            <div class="project-card" data-name="{{ project }}" data-tags="{{ info.tags|join(', ') if info.tags else '' }}">
+                <h3><a href="{{ info.link }}" target="_blank" style="color:white;text-decoration:none;">{{ project }}</a></h3>
+                <p>{{ info.description if info.description else 'Aucune description disponible.' }}</p>
+                <span class="tag">{{ info.tags|join(', ') if info.tags else 'aucun' }}</span>
                 {% if is_admin %}
                 <button class="delete-btn" onclick="deleteProject('{{ project }}')">X</button>
                 {% endif %}
@@ -125,9 +148,9 @@
         {% if is_admin %}
         <button class="add-btn" id="addProjectBtn">+</button>
         {% endif %}
-    </div>
+    </main>
 
-    <!-- Fenêtre modale -->
+    <!-- Modale d'ajout -->
     <div class="modal" id="addModal">
         <div class="modal-content">
             <h2>Ajouter un projet</h2>
@@ -149,12 +172,13 @@
 <script>
 const searchInput = document.getElementById("searchInput");
 const projectContainer = document.getElementById("projectContainer");
+const modal = document.getElementById("addModal");
+const addBtn = document.getElementById("addProjectBtn");
 
 // Recherche en temps réel
 searchInput.addEventListener("input", () => {
     const filter = searchInput.value.toLowerCase();
     const cards = projectContainer.getElementsByClassName("project-card");
-
     for (let card of cards) {
         const name = card.getAttribute("data-name").toLowerCase();
         const tags = card.getAttribute("data-tags").toLowerCase();
@@ -162,26 +186,18 @@ searchInput.addEventListener("input", () => {
     }
 });
 
-// Modal
-const modal = document.getElementById("addModal");
-const addBtn = document.getElementById("addProjectBtn");
-
+// Modale
 if (addBtn) addBtn.addEventListener("click", () => modal.style.display = "block");
+function closeModal() { modal.style.display = "none"; }
 
-function closeModal() {
-    modal.style.display = "none";
-}
-
+// Ajouter un projet
 async function addProject() {
     const name = document.getElementById("projectName").value.trim();
     const github = document.getElementById("githubLink").value.trim();
     const features = document.getElementById("features").value.trim();
     const tags = document.getElementById("tags").value.trim();
 
-    if (!name || !github) {
-        alert("Veuillez remplir le nom et le lien GitHub !");
-        return;
-    }
+    if (!name || !github) { alert("Veuillez remplir le nom et le lien GitHub !"); return; }
 
     const res = await fetch("/add_project", {
         method: "POST",
@@ -198,6 +214,7 @@ async function addProject() {
     }
 }
 
+// Supprimer un projet
 async function deleteProject(name) {
     if (!confirm(`Supprimer le projet "${name}" ?`)) return;
 
@@ -208,12 +225,8 @@ async function deleteProject(name) {
     });
 
     const data = await res.json();
-    if (data.success) {
-        alert("Projet supprimé !");
-        window.location.reload();
-    } else {
-        alert(data.error || "Erreur lors de la suppression.");
-    }
+    if (data.success) window.location.reload();
+    else alert(data.error || "Erreur lors de la suppression.");
 }
 
 // Fermer la modale si clic hors du contenu
