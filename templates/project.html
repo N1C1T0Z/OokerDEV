@@ -48,25 +48,24 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const addBtn = document.getElementById("addProjectBtn");
+
+    // Bouton +
     if (addBtn) {
-        addBtn.addEventListener("click", async () => {
-            const name = prompt("Nom du projet à créer (ex: test) :");
+        addBtn.addEventListener("click", () => {
+            const name = prompt("Nom du projet :");
             if (!name) return;
 
-            const res = await fetch("/add_project", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name })
-            });
+            const link = prompt("Lien GitHub du projet :");
+            if (!link) return;
 
-            const data = await res.json();
-
-            if (data.success) {
-                alert("Projet créé !");
-                window.location.href = data.url;
-            } else {
-                alert("Erreur : " + (data.error || "Inconnue"));
+            // Redirige simplement vers le lien GitHub
+            if (!link.startsWith("http")) {
+                alert("Lien invalide. Assurez-vous qu'il commence par http ou https.");
+                return;
             }
+
+            alert(`Redirection vers ${link}`);
+            window.location.href = link;
         });
     }
 
