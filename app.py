@@ -5,8 +5,13 @@ import json
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_TEMPLATE_DIR = os.path.join(BASE_DIR, "templates", "project")
-ADMIN_FILE = os.path.join(BASE_DIR, "data/admin.json")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+ADMIN_FILE = os.path.join(DATA_DIR, "admin.json")
+PROJECT_FILE = os.path.join(DATA_DIR, "projects.json")
+
+# Vérifie l'existence du dossier data
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
 # Charger les IP admin
 def load_admin_ips():
@@ -14,6 +19,18 @@ def load_admin_ips():
         return []
     with open(ADMIN_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
+# Charger les projets
+def load_projects():
+    if not os.path.exists(PROJECT_FILE):
+        return {}
+    with open(PROJECT_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+# Sauvegarder les projets
+def save_projects(projects):
+    with open(PROJECT_FILE, "w", encoding="utf-8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=4)
 
 @app.route('/')
 def root():
@@ -29,20 +46,8 @@ def project():
     user_ip = request.remote_addr
     is_admin = user_ip in admin_ips
 
-    if not os.path.exists(PROJECT_TEMPLATE_DIR):
-        os.makedirs(PROJECT_TEMPLATE_DIR)
-
-    files = [f[:-5] for f in os.listdir(PROJECT_TEMPLATE_DIR) if f.endswith('.html')]
-
-    return render_template('project.html', projects=files, is_admin=is_admin)
-
-@app.route('/project/<name>')
-def project_page(name):
-    path = os.path.join(PROJECT_TEMPLATE_DIR, f"{name}.html")
-    if os.path.exists(path):
-        return render_template(f"project/{name}.html")
-    else:
-        return render_template('home.html', custom_message="404 - Projet introuvable"), 404
+    projects = load_projects()
+    return render_template('project.html', projects=projects.keys(), is_admin=is_admin)
 
 @app.route('/add_project', methods=['POST'])
 def add_project():
@@ -53,38 +58,22 @@ def add_project():
         return jsonify({"error": "Accès refusé"}), 403
 
     data = request.get_json()
-    project_name = data.get("name", "").strip().lower()
+    project_name = data.get("name", "").strip()
+    github_link = data.get("link", "").strip()
 
-    if not project_name or "/" in project_name or " " in project_name:
-        return jsonify({"error": "Nom invalide"}), 400
+    if not project_name or not github_link:
+        return jsonify({"error": "Nom ou lien manquant"}), 400
 
-    path = os.path.join(PROJECT_TEMPLATE_DIR, f"{project_name}.html")
-    if os.path.exists(path):
+    projects = load_projects()
+
+    if project_name in projects:
         return jsonify({"error": "Ce projet existe déjà"}), 400
 
-    html_content = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>{project_name.capitalize()} - Ooker Dev</title>
-    <link rel="stylesheet" href="{{{{ url_for('static', filename='styles.css') }}}}">
-</head>
-<body>
-    <header class="navbar">
-        <div class="logo-text">Ooker Dev</div>
-    </header>
-    <main class="hero">
-        <h1>404</h1>
-        <p>Le contenu de ce projet n’a pas encore été ajouté.</p>
-    </main>
-</body>
-</html>"""
+    projects[project_name] = github_link
+    save_projects(projects)
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    return jsonify({"success": True, "url": f"/project/{project_name}"})
-
+    # Pas de route créée : on renvoie directement le lien
+    return jsonify({"success": True, "url": github_link})
 
 @app.route('/delete_project', methods=['POST'])
 def delete_project():
@@ -95,18 +84,20 @@ def delete_project():
         return jsonify({"error": "Accès refusé"}), 403
 
     data = request.get_json()
-    project_name = data.get("name", "").strip().lower()
+    project_name = data.get("name", "").strip()
 
     if not project_name:
         return jsonify({"error": "Nom invalide"}), 400
 
-    path = os.path.join(PROJECT_TEMPLATE_DIR, f"{project_name}.html")
-    if not os.path.exists(path):
+    projects = load_projects()
+
+    if project_name not in projects:
         return jsonify({"error": "Ce projet n'existe pas"}), 404
 
-    os.remove(path)
-    return jsonify({"success": True})
+    del projects[project_name]
+    save_projects(projects)
 
+    return jsonify({"success": True})
 
 @app.route('/favicon.ico')
 def favicon():
@@ -128,4 +119,3 @@ def nova():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
