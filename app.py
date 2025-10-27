@@ -121,6 +121,7 @@ def load_nova_projects():
         return json.load(f)  # doit être un dict : { "NomProjet": { "link": "...", "description": "...", "tags": [...] } }
 
 @app.route('/nova-life')
+@app.route('/project/nova-life')
 def nova():
     admin_ips = load_admin_ips()
     user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
@@ -133,5 +134,6 @@ def nova():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
