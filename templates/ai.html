@@ -2,22 +2,22 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OIIA by Ooker DEV</title>
+    <title>OIIA Executor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <!-- Navbar (optionnelle, adapte selon ton site) -->
+    <!-- Navbar -->
     <div class="navbar">
         <div class="logo-text">OIIA Executor</div>
         <ul class="nav-links">
             <li><a href="/home">Home</a></li>
-            <li><a href="/project">Projets</a></li>
+            <li><a href="/project">Projects</a></li>
             <li><a href="/ai" class="active">AI</a></li>
         </ul>
     </div>
 
     <!-- Section principale -->
-    <div class="ai-container custom-content">
+    <div class="custom-content ai-container">
         <h1>Exécuter un fichier Python</h1>
         <form action="/ai" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" accept=".py" required>
@@ -35,6 +35,7 @@
         {% endif %}
     </div>
 
+    <!-- Footer -->
     <footer>
         &copy; 2025 OIIA by Ooker DEV. Tous droits réservés.
     </footer>
