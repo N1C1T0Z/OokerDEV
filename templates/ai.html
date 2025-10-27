@@ -11,29 +11,37 @@
         <div class="logo-text">OIIA Executor</div>
         <ul class="nav-links">
             <li><a href="/home">Home</a></li>
-            <li><a href="/project">Projects</a></li>
+            <li><a href="/project">Projets</a></li>
             <li><a href="/ai" class="active">AI</a></li>
         </ul>
     </div>
 
-    <!-- Section principale -->
-    <div class="custom-content ai-container">
+    <!-- Bloc principal -->
+    <section class="custom-content ai-section">
         <h1>Exécuter un fichier Python</h1>
-        <form action="/ai" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".py" required>
-            <button type="submit" class="add-btn">▶</button>
+        <p style="text-align:center;color:#ccc;margin-bottom:2rem;">
+            Choisis un fichier <strong>.py</strong> à tester. L’IA l’exécutera et renverra les erreurs détectées.
+        </p>
+
+        <form action="/ai" method="POST" enctype="multipart/form-data" style="text-align:center;">
+            <input type="file" name="file" accept=".py" required style="margin-bottom:1rem;">
+            <button type="submit" class="add-btn" title="Exécuter">▶</button>
         </form>
 
         {% if error %}
-            <h3 class="error">Erreur :</h3>
-            <pre>{{ error }}</pre>
+            <div style="margin-top:2rem;">
+                <h3 class="error">Erreurs détectées :</h3>
+                <pre>{{ error }}</pre>
+            </div>
         {% endif %}
 
         {% if output %}
-            <h3 class="success">Résultat :</h3>
-            <pre>{{ output }}</pre>
+            <div style="margin-top:2rem;">
+                <h3 class="success">Résultat :</h3>
+                <pre>{{ output }}</pre>
+            </div>
         {% endif %}
-    </div>
+    </section>
 
     <!-- Footer -->
     <footer>
