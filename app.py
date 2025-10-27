@@ -121,6 +121,11 @@ def soon():
 def social():
     return render_template('social.html')
 
+@app.route('/nova-life')
+def nova():
+    return render_template('nova.html')
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
