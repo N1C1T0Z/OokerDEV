@@ -164,27 +164,10 @@ def mindix_analyze_error(tb_text: str):
 
 
 def mindix_scan_all_errors(code: str, filename: str):
-    """Analyse le code pour détecter plusieurs erreurs syntaxiques et d’exécution"""
+    """Analyse complète du code Python sans exécution ligne par ligne"""
     errors = []
-    lines = code.splitlines()
 
-    # 1️⃣ Vérification syntaxique ligne par ligne
-    for i, line in enumerate(lines, 1):
-        try:
-            compile(line, filename, 'exec')
-        except Exception as e:
-            tb = traceback.format_exc()
-            title, cause, fix, severity = mindix_analyze_error(tb)
-            errors.append({
-                "line": i,
-                "text": line.strip(),
-                "title": title,
-                "cause": cause,
-                "fix": fix,
-                "severity": severity
-            })
-
-    # 2️⃣ Vérification globale avec AST
+    # Étape 1 : Vérification syntaxique globale
     try:
         ast.parse(code, filename)
     except SyntaxError as e:
@@ -198,18 +181,31 @@ def mindix_scan_all_errors(code: str, filename: str):
             "fix": fix,
             "severity": severity
         })
+        return errors  # inutile d’exécuter si la syntaxe est fausse
 
-    # 3️⃣ Nettoyage et tri par gravité
-    seen = set()
-    unique_errors = []
-    for err in errors:
-        key = (err["line"], err["title"])
-        if key not in seen:
-            seen.add(key)
-            unique_errors.append(err)
+    # Étape 2 : Exécution contrôlée pour détecter NameError, etc.
+    try:
+        env = {}
+        exec(compile(code, filename, 'exec'), env)
+    except Exception as e:
+        tb = traceback.format_exc()
+        title, cause, fix, severity = mindix_analyze_error(tb)
+        line = 0
+        match = re.search(r'File ".*?", line (\d+)', tb)
+        if match:
+            line = int(match.group(1))
+        text = code.splitlines()[line - 1].strip() if 0 < line <= len(code.splitlines()) else ""
+        errors.append({
+            "line": line,
+            "text": text,
+            "title": title,
+            "cause": cause,
+            "fix": fix,
+            "severity": severity
+        })
 
-    unique_errors.sort(key=lambda e: e["severity"])
-    return unique_errors
+    return errors
+
 
 
 @app.route('/ai', methods=['GET', 'POST'])
@@ -257,4 +253,5 @@ def mindix():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
