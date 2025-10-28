@@ -2,9 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>MINDIX – Analyseur d'erreurs Python</title>
+    <title>MINDIX – Ooker DEV</title>
     <style>
-        * { box-sizing: border-box; }
         body {
             margin: 0;
             background-color: #121212;
@@ -20,6 +19,7 @@
             border-bottom: 1px solid #ffffff33;
         }
         .logo-text { font-size: 1.5rem; font-weight: 700; }
+
         .ai-container {
             max-width: 800px;
             margin: 5rem auto;
@@ -27,15 +27,31 @@
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 0 15px #00000055;
+            text-align: center;
         }
-        input[type=file] {
-            background: #2a2a2a;
-            color: white;
-            padding: 0.6rem;
-            border-radius: 6px;
-            border: 1px solid #444;
-            width: 100%;
+
+        .file-label {
+            display: inline-block;
+            background-color: white;
+            color: #1a1a1a;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            text-align: center;
+            line-height: 70px;
+            font-size: 2rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+        .file-label:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #ffffffaa;
+        }
+        input[type="file"] {
+            display: none;
+        }
+
         button {
             background-color: #1a1a1a;
             color: #fff;
@@ -45,10 +61,10 @@
             width: 60px;
             height: 60px;
             cursor: pointer;
-            margin-top: 1rem;
             transition: background 0.3s;
         }
         button:hover { background-color: #2a2a2a; }
+
         .result {
             margin-top: 2rem;
             padding: 1rem;
@@ -62,7 +78,9 @@
             background: #181818;
             padding: 1rem;
             border-radius: 6px;
+            text-align: left;
         }
+
         footer {
             text-align: center;
             padding: 1.5rem 0;
@@ -75,29 +93,30 @@
 </head>
 <body>
     <div class="navbar">
-        <div class="logo-text">🤖 MINDIX</div>
-        <div>Analyseur Python intelligent</div>
+        <div class="logo-text">MINDIX</div>
+        <div>AI Executor by Ooker DEV</div>
     </div>
 
     <div class="ai-container">
         <h1>Uploader un fichier Python</h1>
         <form action="/ai" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".py" required>
+            <label for="file" class="file-label" title="Choisir un fichier">📎</label>
+            <input type="file" id="file" name="file" accept=".py" required>
             <br>
-            <button type="submit">▶</button>
+            <button type="submit" title="Analyser">▶</button>
         </form>
+
+        {% if context %}
+        <div class="result" style="margin-top:30px;">
+            <h3>🧩 Ligne d’erreur détectée :</h3>
+            <div>{{ context|safe }}</div>
+        </div>
+        {% endif %}
 
         {% if error %}
         <div class="result error">
-            <h3>⚠️ Rapport d'erreur de MINDIX</h3>
-            <pre>{{ error.split('---')[0] }}</pre>
-
-            {% if code_snippet %}
-            <h4>🔍 Ligne(s) concernée(s) :</h4>
-            <div style="background:#1e293b; padding:10px; border-radius:8px; margin-top:10px;">
-                {{ code_snippet|safe }}
-            </div>
-            {% endif %}
+            <h3>⚠️ Rapport MINDIX</h3>
+            <pre>{{ error }}</pre>
         </div>
         {% endif %}
 
