@@ -283,13 +283,14 @@ def ai_project():
         report = generate_project_report_complete(temp_dir)
         shutil.rmtree(temp_dir)
 
-        return render_template('ai_project.html', report=report)
+        return render_template('ai.html', report=report)
 
-    return render_template('ai_project.html', report=None)
+    return render_template('ai.html', report=None)
 
 
 # --- Lancement ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
