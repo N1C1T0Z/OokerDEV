@@ -161,16 +161,27 @@ def mindix_analyze_error(tb_text: str):
 
 
 def mindix_extract_context(tb_text: str, file_path: str):
+    """Retourne un extrait contextuel autour de la ligne d’erreur"""
     match = re.search(r'File ".*?%s", line (\d+)' % re.escape(os.path.basename(file_path)), tb_text)
     if not match:
-        return None, None
+        return None
 
-    line_num = int(match.group(1))
+    error_line = int(match.group(1))
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    context_line = lines[line_num - 1].strip() if line_num - 1 < len(lines) else ""
-    return line_num, context_line
+    start = max(0, error_line - 2)
+    end = min(len(lines), error_line + 1)
+
+    snippet = ""
+    for i in range(start, end):
+        line = lines[i].rstrip("\n")
+        if i + 1 == error_line:
+            snippet += f"➡ Ligne {i+1} : {line}  ← <b>Ici</b><br>"
+        else:
+            snippet += f"Ligne {i+1} : {line}<br>"
+    return snippet
+
 
 @app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
@@ -188,24 +199,26 @@ def mindix():
         file.save(file_path)
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                code = f.read()
-            exec(code, {"__builtins__": {}}, {})
-            return render_template('ai.html', output="✅ Code exécuté sans erreurs.", error=None, code_snippet=None)
+            compile(open(file_path, "r", encoding="utf-8").read(), file.filename, 'exec')
+            return render_template('ai.html', output="✅ Aucun problème détecté.", error=None, code_snippet=None)
         except Exception:
             tb = traceback.format_exc()
             title, cause, fix = mindix_analyze_error(tb)
-            line_num, context_line = mindix_extract_context(tb, file_path)
+            snippet = mindix_extract_context(tb, file_path)
 
-            if line_num and context_line:
-                code_snippet = f'<div style="background:#7f1d1d; color:#fca5a5; padding:6px 8px; border-radius:4px;">➡ Ligne {line_num} : {context_line} &lt;- Ici</div>'
+            if snippet:
                 report = f"""
                 <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
-                <p><b>{title}</b></p>
-                <p><b>🔍 Ligne concernée :</b> {line_num}</p>
-                <p><b>🧩 Contexte :</b> <code>{context_line}</code></p>
-                <p><b>💡 Cause probable :</b> {cause}</p>
-                <p><b>🛠️ Solution proposée :</b> {fix}</p>
+                <div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>
+                    <p><b>{title}</b></p>
+                    <p>💡 {cause}</p>
+                    <p>🛠️ {fix}</p>
+                    <hr>
+                    <h4>📍 Contexte de l’erreur :</h4>
+                    <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
+                        {snippet}
+                    </div>
+                </div>
                 """
             else:
                 report = f"""
@@ -215,12 +228,12 @@ def mindix():
                 <p>🛠️ {fix}</p>
                 """
 
-            return render_template('ai.html', error=report, output=None, code_snippet=code_snippet if line_num else None)
+            return render_template('ai.html', output=None, error=report, code_snippet=snippet)
 
     return render_template('ai.html', output=None, error=None, code_snippet=None)
 
 
+# --- Lancement ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
