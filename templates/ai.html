@@ -4,15 +4,12 @@
     <meta charset="UTF-8">
     <title>MINDIX – Ooker DEV</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Open Graph / Facebook -->
     <meta property="og:title" content="MINDIX - Executor AI by Ooker DEV.">
     <meta property="og:description" content="MINDIX c'est pour corriger des scripts en 1 clic.">
     <meta property="og:image" content="https://ookerdev.site/static/mindix.jpg">
     <meta property="og:url" content="https://ookerdev.site/mindix">
     <meta property="og:type" content="website">
 
-    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="MINDIX - Executor AI by Ooker DEV.">
     <meta name="twitter:description" content="MINDIX c'est pour corriger des scripts en 1 clic.">
@@ -28,89 +25,119 @@
             align-items: center;
             padding: 40px;
         }
-        h1 { color: #60a5fa; font-size: 2em; margin-bottom: 20px; }
+
+        h1 {
+            color: #60a5fa;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
         label[for="file"] {
-            display: inline-flex; align-items: center; justify-content: center;
-            background-color: white; border-radius: 50%; width: 70px; height: 70px;
-            cursor: pointer; box-shadow: 0 0 15px rgba(255,255,255,0.2);
-            font-size: 2em; transition: all 0.2s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            font-size: 2em;
+            transition: all 0.2s ease-in-out;
         }
+
         label[for="file"]:hover {
-            transform: scale(1.1); box-shadow: 0 0 20px rgba(96,165,250,0.6);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(96,165,250,0.6);
         }
-        input[type="file"] { display: none; }
+
+        input[type="file"] {
+            display: none;
+        }
+
         .report {
-            margin-top: 40px; width: 90%; max-width: 800px;
-            background: #1e293b; padding: 20px; border-radius: 10px;
-            color: white; line-height: 1.5; box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            margin-top: 40px;
+            width: 90%;
+            max-width: 800px;
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            line-height: 1.5;
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
         }
-        .progress {
-            margin-top: 25px; background: #334155; border-radius: 6px;
-            width: 80%; max-width: 600px; padding: 10px; text-align: center;
-            font-weight: bold; color: #93c5fd;
+
+        code {
+            background: #0f172a;
+            color: #93c5fd;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
         }
+
         .context-block {
-            background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px;
-            font-family: monospace; margin-top: 10px;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-top: 10px;
         }
-        hr { border: none; height: 1px; background: #334155; margin: 15px 0; }
-        .success { color: #4ade80; background: #052e16; padding: 12px; border-radius: 6px; margin-top: 25px; }
-        .error { color: #fca5a5; }
-        a {
-            display: inline-block; margin-top: 30px; padding: 12px 25px;
-            background-color: #60a5fa; color: #0f172a; font-weight: bold;
-            border-radius: 8px; text-decoration: none; transition: all 0.2s ease-in-out;
+
+        hr {
+            border: none;
+            height: 1px;
+            background: #334155;
+            margin: 15px 0;
         }
-        a:hover { background-color: #3b82f6; transform: scale(1.05); }
+
+        .success {
+            color: #4ade80;
+            background: #052e16;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 25px;
+        }
+
+        a:hover {
+            background-color: #3b82f6;
+            transform: scale(1.05);
+        }
+        
+        .error {
+            color: #fca5a5;
+        }
     </style>
 </head>
 <body>
 
-<h1>🧠 MINDIX</h1>
+    <h1>🧠 MINDIX</h1>
 
-<form id="uploadForm" enctype="multipart/form-data">
-    <label for="file" title="Choisir un fichier Python ou ZIP">📎</label>
-    <input type="file" name="file" id="file" accept=".py,.zip">
-</form>
+    <form action="/mindix" method="post" enctype="multipart/form-data">
+        <label for="file" title="Choisir un fichier Python">📎</label>
+        <input type="file" name="file" id="file" accept=".py" onchange="this.form.submit();">
+    </form>
 
-<div class="progress" id="progress" style="display:none;">En attente...</div>
-<div id="result"></div>
+    {% if output %}
+        <div class="success">{{ output }}</div>
+    {% endif %}
 
-<a href="/mindix">Importer un autre fichier</a>
+    {% if error %}
+        <div class="report">
+            {{ error|safe }}
+        </div>
+    {% endif %}
 
-<script>
-const form = document.getElementById("uploadForm");
-const fileInput = document.getElementById("file");
-const progressDiv = document.getElementById("progress");
-const resultDiv = document.getElementById("result");
-
-fileInput.addEventListener("change", function() {
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    progressDiv.style.display = "block";
-    progressDiv.innerText = "Téléchargement du fichier...";
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    fetch("/mindix", {
-        method: "POST",
-        body: formData
-    })
-    .then(response => response.text())
-    .then(html => {
-        progressDiv.innerText = "Analyse en cours...";
-        setTimeout(() => {
-            progressDiv.style.display = "none";
-            resultDiv.innerHTML = html;
-        }, 500);
-    })
-    .catch(err => {
-        progressDiv.innerText = "Erreur lors de l'envoi du fichier.";
-    });
-});
-</script>
+    <a href="/ai" style="
+        display: inline-block;
+        margin-top: 30px;
+        padding: 12px 25px;
+        background-color: #60a5fa;
+        color: #0f172a;
+        font-weight: bold;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;">Importer un autre fichier</a>
 
 </body>
 </html>
