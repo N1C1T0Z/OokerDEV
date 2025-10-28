@@ -224,11 +224,25 @@ def test_block(code_block, file_path):
         snippet = mindix_extract_context(tb, file_path)
         return {"title": title, "cause": cause, "fix": fix, "snippet": snippet}
 
+# Tester le fichier complet pour attraper erreurs hors blocs
+def test_full_file(file_path):
+    try:
+        code = open(file_path, "r", encoding="utf-8").read()
+        compile(code, file_path, 'exec')
+        return None
+    except Exception:
+        tb = traceback.format_exc()
+        title, cause, fix = mindix_analyze_error(tb)
+        snippet = mindix_extract_context(tb, file_path)
+        return {"title": title, "cause": cause, "fix": fix, "snippet": snippet, "file": file_path, "block_number": "Full File"}
+
 # Générer rapport complet d'un projet
-def generate_project_report(folder_path):
+def generate_project_report_complete(folder_path):
     py_files = scan_project(folder_path)
     report = []
+
     for file in py_files:
+        # Tester chaque fonction / classe
         blocks = extract_functions_classes(file)
         for i, block in enumerate(blocks):
             result = test_block(block, file)
@@ -236,6 +250,12 @@ def generate_project_report(folder_path):
                 result["file"] = file
                 result["block_number"] = i + 1
                 report.append(result)
+
+        # Tester le fichier complet
+        full_result = test_full_file(file)
+        if full_result:
+            report.append(full_result)
+
     return report
 
 # Route pour analyse de projet zip
@@ -258,7 +278,8 @@ def ai_project():
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
 
-        report = generate_project_report(temp_dir)
+        # Analyse complète et robuste
+        report = generate_project_report_complete(temp_dir)
         shutil.rmtree(temp_dir)
 
         return render_template('ai_project.html', report=report)
