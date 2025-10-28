@@ -75,6 +75,22 @@
             font-family: monospace;
         }
 
+        .context-block {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+
+        hr {
+            border: none;
+            height: 1px;
+            background: #334155;
+            margin: 15px 0;
+        }
+
         .success {
             color: #4ade80;
             background: #052e16;
@@ -85,6 +101,19 @@
 
         .error {
             color: #fca5a5;
+        }
+
+        .scan-message {
+            display: none;
+            margin-top: 30px;
+            color: #93c5fd;
+            font-size: 1.2em;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
 
         a {
@@ -109,10 +138,12 @@
 
     <h1>🧠 MINDIX</h1>
 
-    <form action="/mindix" method="post" enctype="multipart/form-data">
+    <form id="uploadForm" action="/mindix" method="post" enctype="multipart/form-data">
         <label for="file" title="Choisir un fichier Python">📎</label>
-        <input type="file" name="file" id="file" accept=".py" onchange="this.form.submit();">
+        <input type="file" name="file" id="file" accept=".py">
     </form>
+
+    <div id="scanMessage" class="scan-message">🧩 Scan en cours... Veuillez patienter ⏳</div>
 
     {% if output %}
         <div class="success">{{ output }}</div>
@@ -125,6 +156,19 @@
     {% endif %}
 
     <a href="/ai">Importer un autre fichier</a>
+
+    <script>
+        const fileInput = document.getElementById("file");
+        const form = document.getElementById("uploadForm");
+        const scanMsg = document.getElementById("scanMessage");
+
+        fileInput.addEventListener("change", () => {
+            if (fileInput.files.length > 0) {
+                scanMsg.style.display = "block"; // Affiche "Scan en cours..."
+                form.submit(); // Envoie le fichier
+            }
+        });
+    </script>
 
 </body>
 </html>
