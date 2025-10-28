@@ -2,6 +2,7 @@ import os
 import json
 import re
 import traceback
+import ast
 from flask import Flask, render_template, redirect, url_for, send_from_directory, request, jsonify
 
 app = Flask(__name__)
@@ -183,6 +184,46 @@ def mindix_extract_context(tb_text: str, file_path: str):
     return snippet
 
 
+def mindix_full_scan(file_path: str):
+    """
+    Scanne un fichier Python et renvoie une liste d'erreurs syntaxiques et d'exécution potentielles.
+    Ne s'arrête pas à la première erreur.
+    """
+    erreurs = []
+    code = open(file_path, "r", encoding="utf-8").read()
+    lignes = code.splitlines()
+
+    # --- Étape 1 : détection syntaxique avec ast ---
+    blocs = code.split("\n\n")
+    for idx, bloc in enumerate(blocs, start=1):
+        try:
+            ast.parse(bloc)
+        except SyntaxError as e:
+            erreurs.append({
+                "type": "SyntaxError",
+                "ligne": e.lineno,
+                "message": e.msg,
+                "bloc": idx
+            })
+
+    # --- Étape 2 : exécution ligne par ligne ---
+    env = {}
+    for i, ligne in enumerate(lignes, start=1):
+        if not ligne.strip():
+            continue
+        try:
+            compile(ligne, f"<ligne {i}>", "exec")
+            exec(ligne, env)
+        except Exception as e:
+            erreurs.append({
+                "type": type(e).__name__,
+                "ligne": i,
+                "message": str(e)
+            })
+
+    return erreurs
+
+
 @app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 def mindix():
@@ -198,37 +239,28 @@ def mindix():
         file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
         file.save(file_path)
 
-        try:
-            compile(open(file_path, "r", encoding="utf-8").read(), file.filename, 'exec')
+        erreurs = mindix_full_scan(file_path)
+
+        if not erreurs:
             return render_template('ai.html', output="✅ Aucun problème détecté.", error=None, code_snippet=None)
-        except Exception:
-            tb = traceback.format_exc()
-            title, cause, fix = mindix_analyze_error(tb)
-            snippet = mindix_extract_context(tb, file_path)
 
-            if snippet:
-                report = f"""
-                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
-                <div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>
-                    <p><b>{title}</b></p>
-                    <p>💡 {cause}</p>
-                    <p>🛠️ {fix}</p>
-                    <hr>
-                    <h4>📍 Contexte de l’erreur :</h4>
-                    <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
-                        {snippet}
-                    </div>
-                </div>
-                """
-            else:
-                report = f"""
-                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
-                <p><b>{title}</b></p>
-                <p>💡 {cause}</p>
-                <p>🛠️ {fix}</p>
-                """
+        rapport = "<h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>"
+        rapport += "<div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>"
 
-            return render_template('ai.html', output=None, error=report, code_snippet=snippet)
+        for err in erreurs:
+            title, cause, fix = mindix_analyze_error(err["type"])
+            rapport += f"""
+            <div style='background:#0f172a;padding:10px;border-radius:6px;margin-bottom:8px;'>
+                <b style='color:#93c5fd;'>[{err['type']}] Ligne {err['ligne']}</b><br>
+                <span>{err['message']}</span><br>
+                💡 {cause}<br>
+                🛠️ {fix}
+            </div>
+            """
+
+        rapport += "</div>"
+
+        return render_template('ai.html', output=None, error=rapport, code_snippet=None)
 
     return render_template('ai.html', output=None, error=None, code_snippet=None)
 
