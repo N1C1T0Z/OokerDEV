@@ -3,143 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <title>MINDIX – Ooker DEV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
-            margin: 0;
-            background-color: #121212;
-            color: #ffffff;
-            font-family: "Poppins", sans-serif;
-        }
-        .navbar {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', sans-serif;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            padding: 1rem 2rem;
-            background-color: #1a1a1a;
-            border-bottom: 1px solid #ffffff33;
-        }
-        .logo-text { font-size: 1.5rem; font-weight: 700; }
-
-        .ai-container {
-            max-width: 800px;
-            margin: 5rem auto;
-            background: #1c1c1c;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 0 15px #00000055;
-            text-align: center;
+            padding: 40px;
         }
 
-        .file-label {
-            display: inline-block;
+        h1 {
+            color: #60a5fa;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        /* Bouton trombone rond */
+        label[for="file"] {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background-color: white;
-            color: #1a1a1a;
             border-radius: 50%;
             width: 70px;
             height: 70px;
-            text-align: center;
-            line-height: 70px;
-            font-size: 2rem;
             cursor: pointer;
-            margin-bottom: 1rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+            font-size: 2em;
+            transition: all 0.2s ease-in-out;
         }
-        .file-label:hover {
+
+        label[for="file"]:hover {
             transform: scale(1.1);
-            box-shadow: 0 0 10px #ffffffaa;
+            box-shadow: 0 0 20px rgba(96,165,250,0.6);
         }
+
         input[type="file"] {
             display: none;
         }
 
-        button {
-            background-color: #1a1a1a;
-            color: #fff;
-            border: 1px solid #fff;
-            border-radius: 50%;
-            font-size: 2rem;
-            width: 60px;
-            height: 60px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover { background-color: #2a2a2a; }
-
-        .result {
-            margin-top: 2rem;
-            padding: 1rem;
+        .report {
+            margin-top: 40px;
+            width: 90%;
+            max-width: 800px;
+            background: #1e293b;
+            padding: 20px;
             border-radius: 10px;
-        }
-        .error { background-color: #2b0d0d; border-left: 4px solid #ff5757; }
-        .success { background-color: #0d2b1b; border-left: 4px solid #57ff8d; }
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            background: #181818;
-            padding: 1rem;
-            border-radius: 6px;
-            text-align: left;
+            color: white;
+            line-height: 1.5;
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
         }
 
-        footer {
-            text-align: center;
-            padding: 1.5rem 0;
-            background-color: #1a1a1a;
-            border-top: 1px solid #ffffff33;
-            color: #ffffff;
-            margin-top: 3rem;
+        code {
+            background: #0f172a;
+            color: #93c5fd;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .context-block {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+
+        hr {
+            border: none;
+            height: 1px;
+            background: #334155;
+            margin: 15px 0;
+        }
+
+        .success {
+            color: #4ade80;
+            background: #052e16;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 25px;
+        }
+
+        .error {
+            color: #fca5a5;
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <div class="logo-text">MINDIX</div>
-        <div>AI Executor by Ooker DEV</div>
-    </div>
 
-    <div class="ai-container">
-        <h1>Uploader un fichier Python</h1>
-        <form action="/mindix" method="post" enctype="multipart/form-data" style="text-align:center;">
-            <label for="file" style="
-                display:inline-flex;
-                align-items:center;
-                justify-content:center;
-                background-color:white;
-                border-radius:50%;
-                width:60px;
-                height:60px;
-                cursor:pointer;
-                box-shadow:0 0 10px rgba(0,0,0,0.2);
-                transition:transform 0.2s;
-            ">📎</label>
-        <input type="file" name="file" id="file" accept=".py" style="display:none;" onchange="this.form.submit();">
+    <h1>🧠 MINDIX</h1>
+
+    <form action="/mindix" method="post" enctype="multipart/form-data">
+        <label for="file" title="Choisir un fichier Python">📎</label>
+        <input type="file" name="file" id="file" accept=".py" onchange="this.form.submit();">
     </form>
 
+    {% if output %}
+        <div class="success">{{ output }}</div>
+    {% endif %}
 
-        {% if context %}
-        <div class="result" style="margin-top:30px;">
-            <h3>🧩 Ligne d’erreur détectée :</h3>
-            <div>{{ context|safe }}</div>
+    {% if error %}
+        <div class="report">
+            {{ error|safe }}
         </div>
-        {% endif %}
+    {% endif %}
 
-        {% if error %}
-        <div class="result error">
-            <h3>⚠️ Rapport MINDIX</h3>
-            <pre>{{ error }}</pre>
+    {% if code_snippet %}
+        <div class="context-block">
+            {{ code_snippet|safe }}
         </div>
-        {% endif %}
+    {% endif %}
 
-        {% if output %}
-        <div class="result success">
-            <h3>✅ Résultat :</h3>
-            <p>{{ output }}</p>
-        </div>
-        {% endif %}
-    </div>
-
-    <footer>
-        &copy; 2025 MINDIX – Assistant d'analyse de code Python.
-    </footer>
 </body>
 </html>
