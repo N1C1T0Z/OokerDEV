@@ -2,132 +2,115 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OIIA Executor</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>MINDIX – Analyseur d'erreurs Python</title>
     <style>
-        /* Quelques ajouts pour améliorer le rendu */
-        .ai-section {
-            text-align: center;
-            max-width: 900px;
-            margin: 80px auto;
-            background-color: #1c1c1c;
-            padding: 2.5rem;
-            border-radius: 20px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: "Poppins", sans-serif;
         }
-
-        .ai-section h1 {
-            color: white;
-            margin-bottom: 1rem;
-            font-size: 2rem;
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #ffffff33;
         }
-
-        .ai-section p {
-            color: #ccc;
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-
-        pre {
-            text-align: left;
-            background: #101010;
-            padding: 1rem;
+        .logo-text { font-size: 1.5rem; font-weight: 700; }
+        .ai-container {
+            max-width: 800px;
+            margin: 5rem auto;
+            background: #1c1c1c;
+            padding: 2rem;
             border-radius: 10px;
-            color: #eee;
-            font-family: monospace;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            border-left: 4px solid #7b68ee;
+            box-shadow: 0 0 15px #00000055;
         }
-
-        .error {
-            color: #ff6b6b;
-        }
-
-        .success {
-            color: #4ef037;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 4rem;
-            color: #999;
-            font-size: 0.9rem;
-        }
-
-        input[type="file"] {
-            background: #222;
-            color: #fff;
-            border: 1px solid #333;
+        input[type=file] {
+            background: #2a2a2a;
+            color: white;
             padding: 0.6rem;
             border-radius: 6px;
-            cursor: pointer;
-            margin-right: 1rem;
+            border: 1px solid #444;
+            width: 100%;
         }
-
-        input[type="file"]::-webkit-file-upload-button {
-            background: #7b68ee;
-            color: white;
-            border: none;
-            padding: 0.6rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .add-btn {
-            background: #7b68ee;
-            color: white;
-            border: none;
+        button {
+            background-color: #1a1a1a;
+            color: #fff;
+            border: 1px solid #fff;
             border-radius: 50%;
-            padding: 0.6rem 0.9rem;
-            font-size: 1.1rem;
+            font-size: 2rem;
+            width: 60px;
+            height: 60px;
             cursor: pointer;
+            margin-top: 1rem;
             transition: background 0.3s;
         }
-
-        .add-btn:hover {
-            background: #9a85ff;
+        button:hover { background-color: #2a2a2a; }
+        .result {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+        .error { background-color: #2b0d0d; border-left: 4px solid #ff5757; }
+        .success { background-color: #0d2b1b; border-left: 4px solid #57ff8d; }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #181818;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+        footer {
+            text-align: center;
+            padding: 1.5rem 0;
+            background-color: #1a1a1a;
+            border-top: 1px solid #ffffff33;
+            color: #ffffff;
+            margin-top: 3rem;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <div class="navbar">
-        <div class="logo-text">OIIA Executor</div>
-        <ul class="nav-links">
-            <li><a href="/home">Home</a></li>
-            <li><a href="/project">Projets</a></li>
-            <li><a href="/ai" class="active">AI</a></li>
-        </ul>
+        <div class="logo-text">🤖 MINDIX</div>
+        <div>Analyseur Python intelligent</div>
     </div>
 
-    <!-- Contenu principal -->
-    <section class="ai-section">
-        <h1>Exécuter un fichier Python</h1>
-        <p>Choisis un fichier <strong>.py</strong> à tester. L’IA analysera et t’indiquera comment corriger les erreurs.</p>
-
+    <div class="ai-container">
+        <h1>Uploader un fichier Python</h1>
         <form action="/ai" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" accept=".py" required>
-            <button type="submit" class="add-btn" title="Exécuter">▶</button>
+            <br>
+            <button type="submit">▶</button>
         </form>
 
         {% if error %}
-            <div style="margin-top:2rem;">
-                <h3 class="error">⚠️ Erreur détectée</h3>
-                <pre>{{ error | safe }}</pre>
+        <div class="result error">
+            <h3>⚠️ Rapport d'erreur de MINDIX</h3>
+            <pre>{{ error.split('---')[0] }}</pre>
+
+            {% if code_snippet %}
+            <h4>🔍 Ligne(s) concernée(s) :</h4>
+            <div style="background:#1e293b; padding:10px; border-radius:8px; margin-top:10px;">
+                {{ code_snippet|safe }}
             </div>
+            {% endif %}
+        </div>
         {% endif %}
 
         {% if output %}
-            <div style="margin-top:2rem;">
-                <h3 class="success">✅ Résultat :</h3>
-                <pre>{{ output }}</pre>
-            </div>
+        <div class="result success">
+            <h3>✅ Résultat :</h3>
+            <p>{{ output }}</p>
+        </div>
         {% endif %}
-    </section>
+    </div>
 
     <footer>
-        &copy; 2025 OIIA by Ooker DEV. Tous droits réservés.
+        &copy; 2025 MINDIX – Assistant d'analyse de code Python.
     </footer>
 </body>
 </html>
