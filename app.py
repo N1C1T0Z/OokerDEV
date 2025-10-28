@@ -164,10 +164,16 @@ def mindix_analyze_error(tb_text: str):
 
 
 def mindix_scan_all_errors(code: str, filename: str):
-    """Analyse complète du code Python sans exécution ligne par ligne"""
+    """
+    Analyse le code Python complet :
+    - Détecte les erreurs de syntaxe via ast
+    - Vérifie les erreurs courantes d'exécution (sans exécuter réellement le code utilisateur)
+    - Trie les erreurs par gravité
+    """
     errors = []
+    lines = code.splitlines()
 
-    # Étape 1 : Vérification syntaxique globale
+    # --- Étape 1 : vérification de la syntaxe globale ---
     try:
         ast.parse(code, filename)
     except SyntaxError as e:
@@ -181,30 +187,65 @@ def mindix_scan_all_errors(code: str, filename: str):
             "fix": fix,
             "severity": severity
         })
-        return errors  # inutile d’exécuter si la syntaxe est fausse
 
-    # Étape 2 : Exécution contrôlée pour détecter NameError, etc.
-    try:
-        env = {}
-        exec(compile(code, filename, 'exec'), env)
-    except Exception as e:
-        tb = traceback.format_exc()
-        title, cause, fix, severity = mindix_analyze_error(tb)
-        line = 0
-        match = re.search(r'File ".*?", line (\d+)', tb)
-        if match:
-            line = int(match.group(1))
-        text = code.splitlines()[line - 1].strip() if 0 < line <= len(code.splitlines()) else ""
-        errors.append({
-            "line": line,
-            "text": text,
-            "title": title,
-            "cause": cause,
-            "fix": fix,
-            "severity": severity
-        })
+    # --- Étape 2 : analyse statique de certains patterns connus ---
+    # (Nom de variable inconnu, division par zéro, import introuvable)
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
 
-    return errors
+        # Division par zéro
+        if re.search(r'/\s*0(?!\.)', stripped):
+            errors.append({
+                "line": i,
+                "text": stripped,
+                "title": "➗ Division par zéro",
+                "cause": "Une division par zéro provoquerait une erreur à l’exécution.",
+                "fix": "Assure-toi que le dénominateur n’est jamais nul.",
+                "severity": 2
+            })
+
+        # Nom non défini (ex: print(xyz) sans xyz défini)
+        if re.search(r'\bprint\(([^)]+)\)', stripped) and "''" not in stripped and '"' not in stripped:
+            varname = re.findall(r'print\(([^)]+)\)', stripped)[0].strip()
+            if not re.match(r'["\'].*["\']', varname) and not varname.isdigit():
+                errors.append({
+                    "line": i,
+                    "text": stripped,
+                    "title": "❓ Nom potentiellement non défini",
+                    "cause": f"La variable '{varname}' semble non déclarée.",
+                    "fix": "Déclare cette variable avant de l’utiliser.",
+                    "severity": 3
+                })
+
+        # Import suspect (ex: import module_qui_existe_pas)
+        if stripped.startswith("import ") or stripped.startswith("from "):
+            module = stripped.split()[1].split(".")[0]
+            try:
+                __import__(module)
+            except ImportError:
+                errors.append({
+                    "line": i,
+                    "text": stripped,
+                    "title": "📦 Module introuvable",
+                    "cause": f"Le module '{module}' est introuvable sur le système.",
+                    "fix": "Installe-le avec pip ou vérifie son orthographe.",
+                    "severity": 3
+                })
+
+    # --- Étape 3 : dédoublonnage + tri par gravité ---
+    seen = set()
+    unique_errors = []
+    for err in errors:
+        key = (err["line"], err["title"])
+        if key not in seen:
+            seen.add(key)
+            unique_errors.append(err)
+
+    unique_errors.sort(key=lambda e: e["severity"])
+    return unique_errors
+
 
 
 
@@ -253,5 +294,6 @@ def mindix():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
