@@ -163,11 +163,15 @@ def mindix_analyze_error(tb_text: str):
         return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.", 5)
 
 
+import subprocess
+import sys
+
 def mindix_scan_all_errors(code: str, filename: str):
     """
-    Analyse le code Python complet :
-    - Détecte les erreurs de syntaxe via ast
-    - Vérifie les erreurs courantes d'exécution (sans exécuter réellement le code utilisateur)
+    Analyse complète du code Python :
+    - Vérifie la syntaxe avec ast
+    - Détecte les erreurs courantes (division par zéro, noms non définis, import)
+    - Installe automatiquement les modules manquants si possible
     - Trie les erreurs par gravité
     """
     errors = []
@@ -188,8 +192,7 @@ def mindix_scan_all_errors(code: str, filename: str):
             "severity": severity
         })
 
-    # --- Étape 2 : analyse statique de certains patterns connus ---
-    # (Nom de variable inconnu, division par zéro, import introuvable)
+    # --- Étape 2 : analyse statique et installation automatique ---
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
@@ -206,7 +209,7 @@ def mindix_scan_all_errors(code: str, filename: str):
                 "severity": 2
             })
 
-        # Nom non défini (ex: print(xyz) sans xyz défini)
+        # Nom potentiellement non défini
         if re.search(r'\bprint\(([^)]+)\)', stripped) and "''" not in stripped and '"' not in stripped:
             varname = re.findall(r'print\(([^)]+)\)', stripped)[0].strip()
             if not re.match(r'["\'].*["\']', varname) and not varname.isdigit():
@@ -219,20 +222,34 @@ def mindix_scan_all_errors(code: str, filename: str):
                     "severity": 3
                 })
 
-        # Import suspect (ex: import module_qui_existe_pas)
+        # Imports manquants → installation automatique
         if stripped.startswith("import ") or stripped.startswith("from "):
             module = stripped.split()[1].split(".")[0]
             try:
                 __import__(module)
             except ImportError:
-                errors.append({
-                    "line": i,
-                    "text": stripped,
-                    "title": "📦 Module introuvable",
-                    "cause": f"Le module '{module}' est introuvable sur le système.",
-                    "fix": "Installe-le avec pip ou vérifie son orthographe.",
-                    "severity": 3
-                })
+                try:
+                    subprocess.run(
+                        [sys.executable, "-m", "pip", "install", module],
+                        capture_output=True, text=True, timeout=30
+                    )
+                    errors.append({
+                        "line": i,
+                        "text": stripped,
+                        "title": "📦 Module manquant (installé automatiquement)",
+                        "cause": f"Le module '{module}' était introuvable, il a été installé automatiquement.",
+                        "fix": f"Installation effectuée : pip install {module}",
+                        "severity": 3
+                    })
+                except Exception as ex:
+                    errors.append({
+                        "line": i,
+                        "text": stripped,
+                        "title": "📦 Module introuvable (non installé)",
+                        "cause": f"Impossible d’installer le module '{module}'.",
+                        "fix": str(ex),
+                        "severity": 2
+                    })
 
     # --- Étape 3 : dédoublonnage + tri par gravité ---
     seen = set()
@@ -245,8 +262,6 @@ def mindix_scan_all_errors(code: str, filename: str):
 
     unique_errors.sort(key=lambda e: e["severity"])
     return unique_errors
-
-
 
 
 @app.route('/ai', methods=['GET', 'POST'])
@@ -294,6 +309,7 @@ def mindix():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
 
