@@ -172,7 +172,7 @@ def mindix_extract_context(tb_text: str, file_path: str):
     context_line = lines[line_num - 1].strip() if line_num - 1 < len(lines) else ""
     return line_num, context_line
 
-
+@app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 def mindix():
     if request.method == 'POST':
@@ -223,3 +223,4 @@ def mindix():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
