@@ -2,10 +2,6 @@ import os
 import json
 import re
 import traceback
-import ast
-import zipfile
-import tempfile
-import shutil
 from flask import Flask, render_template, redirect, url_for, send_from_directory, request, jsonify
 
 app = Flask(__name__)
@@ -14,13 +10,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 ADMIN_FILE = os.path.join(DATA_DIR, "admin.json")
 PROJECT_FILE = os.path.join(DATA_DIR, "projects.json")
-AI_UPLOAD_DIR = os.path.join(DATA_DIR, "ai_uploads")
-NOVA_FILE = os.path.join(DATA_DIR, "nova_projects.json")
 
-# --- Initialisation des dossiers ---
-for folder in [DATA_DIR, AI_UPLOAD_DIR]:
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+# Vérifie l'existence du dossier data
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
 # --- Utilitaires ---
 def load_admin_ips():
@@ -39,11 +32,6 @@ def save_projects(projects):
     with open(PROJECT_FILE, "w", encoding="utf-8") as f:
         json.dump(projects, f, ensure_ascii=False, indent=4)
 
-def load_nova_projects():
-    if not os.path.exists(NOVA_FILE):
-        return {}
-    with open(NOVA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 # --- Routes principales ---
 @app.route('/')
@@ -52,7 +40,7 @@ def root():
 
 @app.route('/home')
 def home():
-    return render_template('home.html', meta=meta)
+    return render_template('home.html')
 
 @app.route('/project')
 def project():
@@ -61,6 +49,7 @@ def project():
     is_admin = user_ip in admin_ips
     projects = load_projects()
     return render_template('project.html', projects=projects.keys(), is_admin=is_admin)
+
 
 @app.route('/add_project', methods=['POST'])
 def add_project():
@@ -84,6 +73,7 @@ def add_project():
     save_projects(projects)
     return jsonify({"success": True, "url": github_link})
 
+
 @app.route('/delete_project', methods=['POST'])
 def delete_project():
     admin_ips = load_admin_ips()
@@ -104,6 +94,31 @@ def delete_project():
     save_projects(projects)
     return jsonify({"success": True})
 
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'ressources'),
+                               'icon.ico', mimetype='image/vnd.microsoft.icon')
+
+
+@app.route('/soon')
+def soon():
+    return render_template('404.html')
+
+
+@app.route('/socialmedia')
+def social():
+    return render_template('social.html')
+
+
+# --- Nova-Life ---
+NOVA_FILE = os.path.join(DATA_DIR, "nova_projects.json")
+def load_nova_projects():
+    if not os.path.exists(NOVA_FILE):
+        return {}
+    with open(NOVA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 @app.route('/nova-life')
 @app.route('/project/nova-life')
 def nova():
@@ -113,20 +128,18 @@ def nova():
     projects = load_nova_projects()
     return render_template('nova.html', is_admin=is_admin, projects=projects)
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'ressources'),
-                               'icon.ico', mimetype='image/vnd.microsoft.icon')
-
-@app.route('/socialmedia')
-def social():
-    return render_template('social.html', meta=meta)
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
-# --- MINDIX analyse projet complet ---
+
+# --- MINDIX : Analyse intelligente d'erreurs Python ---
+AI_UPLOAD_DIR = os.path.join(DATA_DIR, "ai_uploads")
+if not os.path.exists(AI_UPLOAD_DIR):
+    os.makedirs(AI_UPLOAD_DIR)
+
+
 def mindix_analyze_error(tb_text: str):
     tb_lower = tb_text.lower()
     if "syntaxerror" in tb_lower:
@@ -146,15 +159,20 @@ def mindix_analyze_error(tb_text: str):
     else:
         return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.")
 
+
 def mindix_extract_context(tb_text: str, file_path: str):
+    """Retourne un extrait contextuel autour de la ligne d’erreur"""
     match = re.search(r'File ".*?%s", line (\d+)' % re.escape(os.path.basename(file_path)), tb_text)
     if not match:
         return None
+
     error_line = int(match.group(1))
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
+
     start = max(0, error_line - 2)
     end = min(len(lines), error_line + 1)
+
     snippet = ""
     for i in range(start, end):
         line = lines[i].rstrip("\n")
@@ -164,99 +182,56 @@ def mindix_extract_context(tb_text: str, file_path: str):
             snippet += f"Ligne {i+1} : {line}<br>"
     return snippet
 
-def scan_project(folder_path):
-    py_files = []
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith(".py"):
-                py_files.append(os.path.join(root, file))
-    return py_files
-
-def extract_functions_classes(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        code = f.read()
-    try:
-        tree = ast.parse(code)
-    except Exception:
-        return [code]
-    blocks = []
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
-            block_code = ast.get_source_segment(code, node)
-            if block_code:
-                blocks.append(block_code)
-    if not blocks:
-        blocks.append(code)
-    return blocks
-
-def test_block(code_block, file_path):
-    try:
-        compile(code_block, file_path, 'exec')
-        return None
-    except Exception:
-        tb = traceback.format_exc()
-        title, cause, fix = mindix_analyze_error(tb)
-        snippet = mindix_extract_context(tb, file_path)
-        return {"title": title, "cause": cause, "fix": fix, "snippet": snippet}
-
-def test_full_file(file_path):
-    try:
-        code = open(file_path, "r", encoding="utf-8").read()
-        compile(code, file_path, 'exec')
-        return None
-    except Exception:
-        tb = traceback.format_exc()
-        title, cause, fix = mindix_analyze_error(tb)
-        snippet = mindix_extract_context(tb, file_path)
-        return {"title": title, "cause": cause, "fix": fix, "snippet": snippet, "file": file_path, "block_number": "Full File"}
-
-def generate_project_report_complete(folder_path):
-    py_files = scan_project(folder_path)
-    report = []
-    for file in py_files:
-        blocks = extract_functions_classes(file)
-        for i, block in enumerate(blocks):
-            result = test_block(block, file)
-            if result:
-                result["file"] = file
-                result["block_number"] = i + 1
-                report.append(result)
-        full_result = test_full_file(file)
-        if full_result:
-            report.append(full_result)
-    return report
 
 @app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 def mindix():
     if request.method == 'POST':
         if 'file' not in request.files:
-            return render_template('ai.html', error="Aucun fichier sélectionné", output=None)
+            return render_template('ai.html', error="Aucun fichier sélectionné", output=None, code_snippet=None)
         file = request.files['file']
         if file.filename == '':
-            return render_template('ai.html', error="Nom de fichier vide", output=None)
+            return render_template('ai.html', error="Nom de fichier vide", output=None, code_snippet=None)
+        if not file.filename.endswith('.py'):
+            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None, code_snippet=None)
 
-        # Gestion zip ou py
-        temp_dir = tempfile.mkdtemp()
-        file_path = os.path.join(temp_dir, file.filename)
+        file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
         file.save(file_path)
 
-        report = []
-        if file.filename.endswith(".py"):
-            # Analyse simple fichier unique
-            result = test_block(open(file_path, "r", encoding="utf-8").read(), file_path)
-            if result:
-                report.append(result)
-        elif file.filename.endswith(".zip"):
-            # Analyse projet complet
-            with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
-            report = generate_project_report_complete(temp_dir)
+        try:
+            compile(open(file_path, "r", encoding="utf-8").read(), file.filename, 'exec')
+            return render_template('ai.html', output="✅ Aucun problème détecté.", error=None, code_snippet=None)
+        except Exception:
+            tb = traceback.format_exc()
+            title, cause, fix = mindix_analyze_error(tb)
+            snippet = mindix_extract_context(tb, file_path)
 
-        shutil.rmtree(temp_dir)
-        return render_template('ai.html', report=report)
+            if snippet:
+                report = f"""
+                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
+                <div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>
+                    <p><b>{title}</b></p>
+                    <p>💡 {cause}</p>
+                    <p>🛠️ {fix}</p>
+                    <hr>
+                    <h4>📍 Contexte de l’erreur :</h4>
+                    <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
+                        {snippet}
+                    </div>
+                </div>
+                """
+            else:
+                report = f"""
+                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
+                <p><b>{title}</b></p>
+                <p>💡 {cause}</p>
+                <p>🛠️ {fix}</p>
+                """
 
-    return render_template('ai.html', report=None)
+            return render_template('ai.html', output=None, error=report, code_snippet=snippet)
+
+    return render_template('ai.html', output=None, error=None, code_snippet=None)
+
 
 # --- Lancement ---
 if __name__ == '__main__':
