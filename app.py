@@ -2,6 +2,10 @@ import os
 import json
 import re
 import traceback
+import ast
+import zipfile
+import tempfile
+import shutil
 from flask import Flask, render_template, redirect, url_for, send_from_directory, request, jsonify
 
 app = Flask(__name__)
@@ -134,12 +138,12 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 
-# --- MINDIX : Analyse intelligente d'erreurs Python ---
+# --- MINDIX : Analyse intelligente d'erreurs Python sur projet entier ---
 AI_UPLOAD_DIR = os.path.join(DATA_DIR, "ai_uploads")
 if not os.path.exists(AI_UPLOAD_DIR):
     os.makedirs(AI_UPLOAD_DIR)
 
-
+# Analyse des erreurs individuelles
 def mindix_analyze_error(tb_text: str):
     tb_lower = tb_text.lower()
     if "syntaxerror" in tb_lower:
@@ -159,9 +163,8 @@ def mindix_analyze_error(tb_text: str):
     else:
         return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.")
 
-
+# Extrait contextuel autour de la ligne d'erreur
 def mindix_extract_context(tb_text: str, file_path: str):
-    """Retourne un extrait contextuel autour de la ligne d’erreur"""
     match = re.search(r'File ".*?%s", line (\d+)' % re.escape(os.path.basename(file_path)), tb_text)
     if not match:
         return None
@@ -182,55 +185,85 @@ def mindix_extract_context(tb_text: str, file_path: str):
             snippet += f"Ligne {i+1} : {line}<br>"
     return snippet
 
+# Scanner tous les fichiers Python d'un projet
+def scan_project(folder_path):
+    py_files = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(".py"):
+                py_files.append(os.path.join(root, file))
+    return py_files
 
-@app.route('/ai', methods=['GET', 'POST'])
-@app.route('/mindix', methods=['GET', 'POST'])
-def mindix():
+# Extraire fonctions et classes d'un fichier
+def extract_functions_classes(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        code = f.read()
+    try:
+        tree = ast.parse(code)
+    except Exception:
+        return [code]  # Si erreur de parsing, retourner le code entier
+
+    blocks = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            block_code = ast.get_source_segment(code, node)
+            if block_code:
+                blocks.append(block_code)
+    if not blocks:
+        blocks.append(code)
+    return blocks
+
+# Tester un bloc de code
+def test_block(code_block, file_path):
+    try:
+        compile(code_block, file_path, 'exec')
+        return None
+    except Exception:
+        tb = traceback.format_exc()
+        title, cause, fix = mindix_analyze_error(tb)
+        snippet = mindix_extract_context(tb, file_path)
+        return {"title": title, "cause": cause, "fix": fix, "snippet": snippet}
+
+# Générer rapport complet d'un projet
+def generate_project_report(folder_path):
+    py_files = scan_project(folder_path)
+    report = []
+    for file in py_files:
+        blocks = extract_functions_classes(file)
+        for i, block in enumerate(blocks):
+            result = test_block(block, file)
+            if result:
+                result["file"] = file
+                result["block_number"] = i + 1
+                report.append(result)
+    return report
+
+# Route pour analyse de projet zip
+@app.route('/ai_project', methods=['GET', 'POST'])
+def ai_project():
     if request.method == 'POST':
-        if 'file' not in request.files:
-            return render_template('ai.html', error="Aucun fichier sélectionné", output=None, code_snippet=None)
-        file = request.files['file']
-        if file.filename == '':
-            return render_template('ai.html', error="Nom de fichier vide", output=None, code_snippet=None)
-        if not file.filename.endswith('.py'):
-            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None, code_snippet=None)
+        if 'folder' not in request.files:
+            return render_template('ai.html', error="Aucun fichier sélectionné", output=None)
 
-        file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
-        file.save(file_path)
+        folder_zip = request.files['folder']
+        if folder_zip.filename == '':
+            return render_template('ai.html', error="Nom de fichier vide", output=None)
+        if not folder_zip.filename.endswith('.zip'):
+            return render_template('ai.html', error="Seuls les fichiers .zip sont acceptés", output=None)
 
-        try:
-            compile(open(file_path, "r", encoding="utf-8").read(), file.filename, 'exec')
-            return render_template('ai.html', output="✅ Aucun problème détecté.", error=None, code_snippet=None)
-        except Exception:
-            tb = traceback.format_exc()
-            title, cause, fix = mindix_analyze_error(tb)
-            snippet = mindix_extract_context(tb, file_path)
+        temp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(temp_dir, folder_zip.filename)
+        folder_zip.save(zip_path)
 
-            if snippet:
-                report = f"""
-                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
-                <div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>
-                    <p><b>{title}</b></p>
-                    <p>💡 {cause}</p>
-                    <p>🛠️ {fix}</p>
-                    <hr>
-                    <h4>📍 Contexte de l’erreur :</h4>
-                    <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
-                        {snippet}
-                    </div>
-                </div>
-                """
-            else:
-                report = f"""
-                <h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>
-                <p><b>{title}</b></p>
-                <p>💡 {cause}</p>
-                <p>🛠️ {fix}</p>
-                """
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
 
-            return render_template('ai.html', output=None, error=report, code_snippet=snippet)
+        report = generate_project_report(temp_dir)
+        shutil.rmtree(temp_dir)
 
-    return render_template('ai.html', output=None, error=None, code_snippet=None)
+        return render_template('ai_project.html', report=report)
+
+    return render_template('ai_project.html', report=None)
 
 
 # --- Lancement ---
