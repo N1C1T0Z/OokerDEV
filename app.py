@@ -136,6 +136,8 @@ def page_not_found(e):
 
 
 # --- MINDIX : Analyse intelligente d'erreurs Python ---
+import ast
+
 AI_UPLOAD_DIR = os.path.join(DATA_DIR, "ai_uploads")
 if not os.path.exists(AI_UPLOAD_DIR):
     os.makedirs(AI_UPLOAD_DIR)
@@ -144,84 +146,70 @@ if not os.path.exists(AI_UPLOAD_DIR):
 def mindix_analyze_error(tb_text: str):
     tb_lower = tb_text.lower()
     if "syntaxerror" in tb_lower:
-        return ("🧩 Erreur de syntaxe", "Parenthèse, indentation ou deux-points manquants.", "Corrige la structure à la ligne indiquée.")
+        return ("🧩 Erreur de syntaxe", "Parenthèse, indentation ou deux-points manquants.", "Corrige la structure à la ligne indiquée.", 1)
     elif "nameerror" in tb_lower:
-        return ("❓ Nom non défini", "Une variable ou fonction n’existe pas.", "Déclare-la avant de l’utiliser.")
-    elif "importerror" in tb_lower or "modulenotfounderror" in tb_lower:
-        return ("📦 Module introuvable", "Le module importé est manquant ou mal orthographié.", "Installe-le avec `pip install nom_du_module` ou corrige son nom.")
+        return ("❓ Nom non défini", "Une variable ou fonction n’existe pas.", "Déclare-la avant de l’utiliser.", 2)
     elif "typeerror" in tb_lower:
-        return ("🔢 Erreur de type", "Types incompatibles (ex: str + int).", "Utilise `type()` pour vérifier les types et adapter le code.")
+        return ("🔢 Erreur de type", "Types incompatibles (ex: str + int).", "Utilise `type()` pour vérifier les types et adapter le code.", 3)
     elif "attributeerror" in tb_lower:
-        return ("⚙️ Attribut inexistant", "Méthode ou propriété absente.", "Vérifie le type d’objet avant l’appel.")
+        return ("⚙️ Attribut inexistant", "Méthode ou propriété absente.", "Vérifie le type d’objet avant l’appel.", 3)
+    elif "importerror" in tb_lower or "modulenotfounderror" in tb_lower:
+        return ("📦 Module introuvable", "Le module importé est manquant ou mal orthographié.", "Installe-le ou corrige son nom.", 3)
     elif "filenotfounderror" in tb_lower:
-        return ("📁 Fichier introuvable", "Le fichier demandé est inexistant.", "Vérifie le chemin et le nom du fichier.")
+        return ("📁 Fichier introuvable", "Le fichier demandé est inexistant.", "Vérifie le chemin et le nom du fichier.", 4)
     elif "zerodivisionerror" in tb_lower:
-        return ("➗ Division par zéro", "Division d’un nombre par zéro.", "Assure-toi que le dénominateur soit non nul.")
+        return ("➗ Division par zéro", "Division d’un nombre par zéro.", "Assure-toi que le dénominateur soit non nul.", 4)
     else:
-        return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.")
+        return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.", 5)
 
 
-def mindix_extract_context(tb_text: str, file_path: str):
-    """Retourne un extrait contextuel autour de la ligne d’erreur"""
-    match = re.search(r'File ".*?%s", line (\d+)' % re.escape(os.path.basename(file_path)), tb_text)
-    if not match:
-        return None
+def mindix_scan_all_errors(code: str, filename: str):
+    """Analyse le code pour détecter plusieurs erreurs syntaxiques et d’exécution"""
+    errors = []
+    lines = code.splitlines()
 
-    error_line = int(match.group(1))
-    with open(file_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    start = max(0, error_line - 2)
-    end = min(len(lines), error_line + 1)
-
-    snippet = ""
-    for i in range(start, end):
-        line = lines[i].rstrip("\n")
-        if i + 1 == error_line:
-            snippet += f"➡ Ligne {i+1} : {line}  ← <b>Ici</b><br>"
-        else:
-            snippet += f"Ligne {i+1} : {line}<br>"
-    return snippet
-
-
-def mindix_full_scan(file_path: str):
-    """
-    Scanne un fichier Python et renvoie une liste d'erreurs syntaxiques et d'exécution potentielles.
-    Ne s'arrête pas à la première erreur.
-    """
-    erreurs = []
-    code = open(file_path, "r", encoding="utf-8").read()
-    lignes = code.splitlines()
-
-    # --- Étape 1 : détection syntaxique avec ast ---
-    blocs = code.split("\n\n")
-    for idx, bloc in enumerate(blocs, start=1):
+    # 1️⃣ Vérification syntaxique ligne par ligne
+    for i, line in enumerate(lines, 1):
         try:
-            ast.parse(bloc)
-        except SyntaxError as e:
-            erreurs.append({
-                "type": "SyntaxError",
-                "ligne": e.lineno,
-                "message": e.msg,
-                "bloc": idx
-            })
-
-    # --- Étape 2 : exécution ligne par ligne ---
-    env = {}
-    for i, ligne in enumerate(lignes, start=1):
-        if not ligne.strip():
-            continue
-        try:
-            compile(ligne, f"<ligne {i}>", "exec")
-            exec(ligne, env)
+            compile(line, filename, 'exec')
         except Exception as e:
-            erreurs.append({
-                "type": type(e).__name__,
-                "ligne": i,
-                "message": str(e)
+            tb = traceback.format_exc()
+            title, cause, fix, severity = mindix_analyze_error(tb)
+            errors.append({
+                "line": i,
+                "text": line.strip(),
+                "title": title,
+                "cause": cause,
+                "fix": fix,
+                "severity": severity
             })
 
-    return erreurs
+    # 2️⃣ Vérification globale avec AST
+    try:
+        ast.parse(code, filename)
+    except SyntaxError as e:
+        tb = traceback.format_exc()
+        title, cause, fix, severity = mindix_analyze_error(tb)
+        errors.append({
+            "line": e.lineno or 0,
+            "text": e.text.strip() if e.text else "",
+            "title": title,
+            "cause": cause,
+            "fix": fix,
+            "severity": severity
+        })
+
+    # 3️⃣ Nettoyage et tri par gravité
+    seen = set()
+    unique_errors = []
+    for err in errors:
+        key = (err["line"], err["title"])
+        if key not in seen:
+            seen.add(key)
+            unique_errors.append(err)
+
+    unique_errors.sort(key=lambda e: e["severity"])
+    return unique_errors
 
 
 @app.route('/ai', methods=['GET', 'POST'])
@@ -229,43 +217,44 @@ def mindix_full_scan(file_path: str):
 def mindix():
     if request.method == 'POST':
         if 'file' not in request.files:
-            return render_template('ai.html', error="Aucun fichier sélectionné", output=None, code_snippet=None)
+            return render_template('ai.html', error="Aucun fichier sélectionné", output=None)
         file = request.files['file']
         if file.filename == '':
-            return render_template('ai.html', error="Nom de fichier vide", output=None, code_snippet=None)
+            return render_template('ai.html', error="Nom de fichier vide", output=None)
         if not file.filename.endswith('.py'):
-            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None, code_snippet=None)
+            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None)
 
         file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
         file.save(file_path)
 
-        erreurs = mindix_full_scan(file_path)
+        code = open(file_path, "r", encoding="utf-8").read()
 
-        if not erreurs:
-            return render_template('ai.html', output="✅ Aucun problème détecté.", error=None, code_snippet=None)
+        # Analyse complète
+        errors = mindix_scan_all_errors(code, file.filename)
 
-        rapport = "<h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>"
-        rapport += "<div style='background:#1e293b; color:white; padding:12px; border-radius:8px;'>"
+        if not errors:
+            return render_template('ai.html', output="✅ Aucun problème détecté.", error=None)
 
-        for err in erreurs:
-            title, cause, fix = mindix_analyze_error(err["type"])
-            rapport += f"""
-            <div style='background:#0f172a;padding:10px;border-radius:6px;margin-bottom:8px;'>
-                <b style='color:#93c5fd;'>[{err['type']}] Ligne {err['ligne']}</b><br>
-                <span>{err['message']}</span><br>
-                💡 {cause}<br>
-                🛠️ {fix}
+        # Génération du rapport complet
+        report_html = "<h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>"
+        for err in errors:
+            report_html += f"""
+            <div style='background:#1e293b; color:white; padding:12px; border-radius:8px; margin-bottom:12px;'>
+                <p><b>{err["title"]}</b> — ligne {err["line"]}</p>
+                <p>💡 {err["cause"]}</p>
+                <p>🛠️ {err["fix"]}</p>
+                <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
+                    ➡ {err["text"]}
+                </div>
             </div>
             """
 
-        rapport += "</div>"
+        return render_template('ai.html', output=None, error=report_html)
 
-        return render_template('ai.html', output=None, error=rapport, code_snippet=None)
-
-    return render_template('ai.html', output=None, error=None, code_snippet=None)
-
+    return render_template('ai.html', output=None, error=None)
 
 # --- Lancement ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
