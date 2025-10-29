@@ -491,6 +491,71 @@ def files_remote_upload_endpoint():
         return jsonify({"status": "uploaded", "code": upload_resp.status_code}), upload_resp.status_code
 
 # ----------------------------
+# Authentification : /sign (login / register)
+# ----------------------------
+USERS_FILE_PATH = "data/users.json"
+
+
+def load_remote_users():
+    """Lit le fichier data/users.json depuis le stockage distant."""
+    resp = remote_get_file(USERS_FILE_PATH)
+    if resp is None or resp.status_code != 200:
+        return {}
+    try:
+        return json.loads(resp.content.decode('utf-8'))
+    except Exception:
+        return {}
+
+
+def save_remote_users(users: dict):
+    """Écrit le fichier data/users.json sur le stockage distant."""
+    data_bytes = json.dumps(users, ensure_ascii=False, indent=4).encode('utf-8')
+    stream = BytesIO(data_bytes)
+    upload_resp = remote_upload_file(USERS_FILE_PATH, stream, filename="users.json", method="PUT")
+    return upload_resp is not None and upload_resp.status_code in (200, 201)
+
+
+@app.route('/sign')
+def sign():
+    """Affiche la page login/register switchable."""
+    return render_template('login.html')
+
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.get_json(force=True)
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    email = data.get('email', '').strip()
+
+    if not username or not password or not email:
+        return jsonify({"error": "Champs manquants"}), 400
+
+    users = load_remote_users()
+    if username in users:
+        return jsonify({"error": "Nom d'utilisateur déjà pris"}), 400
+
+    users[username] = {"password": password, "email": email}
+    if not save_remote_users(users):
+        return jsonify({"error": "Erreur lors de l'enregistrement distant"}), 500
+
+    return jsonify({"success": True, "message": "Compte créé avec succès"})
+
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json(force=True)
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    users = load_remote_users()
+    if username not in users or users[username]['password'] != password:
+        return jsonify({"error": "Identifiants invalides"}), 401
+
+    return jsonify({"success": True, "message": f"Bienvenue {username}!"})
+
+
+# ----------------------------
 # Run app
 # ----------------------------
 if __name__ == '__main__':
@@ -498,4 +563,5 @@ if __name__ == '__main__':
     debug_mode = False
     print(f"App démarrée. Stockage distant : {REMOTE_STORAGE_BASE} (clé fournie).")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
 
