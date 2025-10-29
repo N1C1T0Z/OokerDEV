@@ -375,7 +375,7 @@ def mindix_scan_file_from_content(content: str, filename: str):
     except Exception:
         return heuristic_checks(content)
 
-@app.route('/mindix-v1.2', methods=['GET', 'POST'])
+@app.route('/mindix-v1.3', methods=['GET', 'POST'])
 @app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 def mindix():
@@ -498,3 +498,4 @@ if __name__ == '__main__':
     debug_mode = False
     print(f"App démarrée. Stockage distant : {REMOTE_STORAGE_BASE} (clé fournie).")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
