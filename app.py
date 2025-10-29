@@ -3,6 +3,9 @@ import json
 import re
 import traceback
 import ast
+import subprocess
+import sys
+import shlex
 from flask import Flask, render_template, redirect, url_for, send_from_directory, request, jsonify
 
 app = Flask(__name__)
@@ -135,13 +138,12 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 
-# --- MINDIX : Analyse intelligente d'erreurs Python ---
-import ast
-
+# -------------------------------------------------------------------
+# --- MINDIX : Analyse intelligente pour .py, .js, .cs, .cpp, .c ----
+# -------------------------------------------------------------------
 AI_UPLOAD_DIR = os.path.join(DATA_DIR, "ai_uploads")
 if not os.path.exists(AI_UPLOAD_DIR):
     os.makedirs(AI_UPLOAD_DIR)
-
 
 def mindix_analyze_error(tb_text: str):
     tb_lower = tb_text.lower()
@@ -150,34 +152,23 @@ def mindix_analyze_error(tb_text: str):
     elif "nameerror" in tb_lower:
         return ("❓ Nom non défini", "Une variable ou fonction n’existe pas.", "Déclare-la avant de l’utiliser.", 2)
     elif "typeerror" in tb_lower:
-        return ("🔢 Erreur de type", "Types incompatibles (ex: str + int).", "Utilise `type()` pour vérifier les types et adapter le code.", 3)
+        return ("🔢 Erreur de type", "Types incompatibles (ex: str + int).", "Utilise `type()` pour vérifier les types.", 3)
     elif "attributeerror" in tb_lower:
         return ("⚙️ Attribut inexistant", "Méthode ou propriété absente.", "Vérifie le type d’objet avant l’appel.", 3)
     elif "importerror" in tb_lower or "modulenotfounderror" in tb_lower:
-        return ("📦 Module introuvable", "Le module importé est manquant ou mal orthographié.", "Installe-le ou corrige son nom.", 3)
+        return ("📦 Module introuvable", "Le module importé est manquant.", "Installe-le ou corrige son nom.", 3)
     elif "filenotfounderror" in tb_lower:
         return ("📁 Fichier introuvable", "Le fichier demandé est inexistant.", "Vérifie le chemin et le nom du fichier.", 4)
     elif "zerodivisionerror" in tb_lower:
         return ("➗ Division par zéro", "Division d’un nombre par zéro.", "Assure-toi que le dénominateur soit non nul.", 4)
     else:
-        return ("💥 Erreur inconnue", "Problème non identifiable automatiquement.", "Analyse la logique du code à la ligne indiquée.", 5)
+        return ("💥 Erreur inconnue", "Problème non identifiable.", "Analyse la logique du code à la ligne indiquée.", 5)
 
-
-import subprocess
-import sys
 
 def mindix_scan_all_errors(code: str, filename: str):
-    """
-    Analyse complète du code Python :
-    - Vérifie la syntaxe avec ast
-    - Détecte les erreurs courantes (division par zéro, noms non définis, import)
-    - Installe automatiquement les modules manquants si possible
-    - Trie les erreurs par gravité
-    """
     errors = []
     lines = code.splitlines()
 
-    # --- Étape 1 : vérification de la syntaxe globale ---
     try:
         ast.parse(code, filename)
     except SyntaxError as e:
@@ -192,66 +183,21 @@ def mindix_scan_all_errors(code: str, filename: str):
             "severity": severity
         })
 
-    # --- Étape 2 : analyse statique et installation automatique ---
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
 
-        # Division par zéro
         if re.search(r'/\s*0(?!\.)', stripped):
             errors.append({
                 "line": i,
                 "text": stripped,
                 "title": "➗ Division par zéro",
-                "cause": "Une division par zéro provoquerait une erreur à l’exécution.",
-                "fix": "Assure-toi que le dénominateur n’est jamais nul.",
+                "cause": "Division par zéro détectée.",
+                "fix": "Vérifie le dénominateur.",
                 "severity": 2
             })
 
-        # Nom potentiellement non défini
-        if re.search(r'\bprint\(([^)]+)\)', stripped) and "''" not in stripped and '"' not in stripped:
-            varname = re.findall(r'print\(([^)]+)\)', stripped)[0].strip()
-            if not re.match(r'["\'].*["\']', varname) and not varname.isdigit():
-                errors.append({
-                    "line": i,
-                    "text": stripped,
-                    "title": "❓ Nom potentiellement non défini",
-                    "cause": f"La variable '{varname}' semble non déclarée.",
-                    "fix": "Déclare cette variable avant de l’utiliser.",
-                    "severity": 3
-                })
-
-        # Imports manquants → installation automatique
-        if stripped.startswith("import ") or stripped.startswith("from "):
-            module = stripped.split()[1].split(".")[0]
-            try:
-                __import__(module)
-            except ImportError:
-                try:
-                    subprocess.run(
-                        [sys.executable, "-m", "pip", "install", module],
-                        capture_output=True, text=True, timeout=30
-                    )
-                    errors.append({
-                        "line": i,
-                        "text": stripped,
-                        "title": "📦 Module manquant (installé automatiquement)",
-                        "cause": f"Le module '{module}' était introuvable, il a été installé automatiquement.",
-                        "fix": f"Installation effectuée : pip install {module}",
-                        "severity": 3
-                    })
-                except Exception as ex:
-                    errors.append({
-                        "line": i,
-                        "text": stripped,
-                        "title": "📦 Module introuvable (non installé)",
-                        "cause": f"Impossible d’installer le module '{module}'.",
-                        "fix": str(ex),
-                        "severity": 2
-                    })
-
-    # --- Étape 3 : dédoublonnage + tri par gravité ---
     seen = set()
     unique_errors = []
     for err in errors:
@@ -259,11 +205,98 @@ def mindix_scan_all_errors(code: str, filename: str):
         if key not in seen:
             seen.add(key)
             unique_errors.append(err)
-
     unique_errors.sort(key=lambda e: e["severity"])
     return unique_errors
 
 
+# --- Helpers pour les autres langages ---
+def parse_tool_output_to_errors(output_text: str):
+    errors = []
+    for line in output_text.splitlines():
+        if not line.strip():
+            continue
+        m = re.search(r'[:\(](\d{1,5})[:\)]', line)
+        lineno = int(m.group(1)) if m else 0
+        title = "Erreur de syntaxe" if "error" in line.lower() else "Avertissement"
+        errors.append({
+            "line": lineno,
+            "text": line.strip(),
+            "title": title,
+            "cause": line.strip(),
+            "fix": "Vérifie la syntaxe.",
+            "severity": 3 if "error" in line.lower() else 4
+        })
+    return errors
+
+
+def heuristic_checks(code: str):
+    errs = []
+    if code.count('"') % 2 != 0 or code.count("'") % 2 != 0:
+        errs.append({
+            "line": 0,
+            "text": "Chaîne non terminée.",
+            "title": "Chaîne non terminée",
+            "cause": "Nombre impair de guillemets détecté.",
+            "fix": "Ferme les guillemets.",
+            "severity": 3
+        })
+    if code.count("{") != code.count("}"):
+        errs.append({
+            "line": 0,
+            "text": "Accolades non équilibrées.",
+            "title": "Erreur de structure",
+            "cause": "Trop ou pas assez d’accolades.",
+            "fix": "Vérifie les blocs { }.",
+            "severity": 2
+        })
+    return errs
+
+
+def check_with_tool(filepath: str, ext: str):
+    try:
+        if ext in (".c", ".cpp", ".h", ".hpp"):
+            compiler = "g++" if ext != ".c" else "gcc"
+            cmd = f"{compiler} -fsyntax-only -Wall {shlex.quote(filepath)}"
+        elif ext == ".js":
+            cmd = f"node --check {shlex.quote(filepath)}"
+        elif ext == ".cs":
+            cmd = "mcs -target:library " + shlex.quote(filepath)
+        else:
+            return []
+
+        proc = subprocess.run(shlex.split(cmd), capture_output=True, text=True, timeout=10)
+        out = proc.stderr + proc.stdout
+        if proc.returncode != 0:
+            return parse_tool_output_to_errors(out)
+        return []
+    except FileNotFoundError:
+        return None
+    except subprocess.TimeoutExpired:
+        return [{
+            "line": 0,
+            "text": "Timeout",
+            "title": "Analyse trop longue",
+            "cause": "Le vérificateur a pris trop de temps.",
+            "fix": "Réessaie plus tard.",
+            "severity": 2
+        }]
+
+
+def mindix_scan_file(filepath: str, filename: str):
+    ext = os.path.splitext(filename)[1].lower()
+    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        code = f.read()
+
+    if ext == ".py":
+        return mindix_scan_all_errors(code, filename)
+
+    tool_result = check_with_tool(filepath, ext)
+    if tool_result is None:
+        return heuristic_checks(code)
+    return tool_result or heuristic_checks(code)
+
+
+@app.route('/mindix-v1.2', methods=['GET', 'POST'])
 @app.route('/ai', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 def mindix():
@@ -273,30 +306,29 @@ def mindix():
         file = request.files['file']
         if file.filename == '':
             return render_template('ai.html', error="Nom de fichier vide", output=None)
-        if not file.filename.endswith('.py'):
-            return render_template('ai.html', error="Seuls les fichiers .py sont acceptés", output=None)
+
+        allowed = ('.py', '.js', '.cs', '.c', '.cpp', '.h', '.hpp')
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in allowed:
+            return render_template('ai.html', error="Formats acceptés : .py, .js, .cs, .c, .cpp, .h, .hpp", output=None)
 
         file_path = os.path.join(AI_UPLOAD_DIR, file.filename)
         file.save(file_path)
 
-        code = open(file_path, "r", encoding="utf-8").read()
-
-        # Analyse complète
-        errors = mindix_scan_all_errors(code, file.filename)
+        errors = mindix_scan_file(file_path, file.filename)
 
         if not errors:
             return render_template('ai.html', output="✅ Aucun problème détecté.", error=None)
 
-        # Génération du rapport complet
         report_html = "<h2 style='color:#60a5fa;'>🧠 Rapport MINDIX</h2>"
         for err in errors:
             report_html += f"""
             <div style='background:#1e293b; color:white; padding:12px; border-radius:8px; margin-bottom:12px;'>
-                <p><b>{err["title"]}</b> — ligne {err["line"]}</p>
-                <p>💡 {err["cause"]}</p>
-                <p>🛠️ {err["fix"]}</p>
+                <p><b>{err.get('title','Erreur')}</b> — ligne {err.get('line',0)}</p>
+                <p>💡 {err.get('cause','')}</p>
+                <p>🛠️ {err.get('fix','')}</p>
                 <div style='background:#0f172a; color:#e2e8f0; padding:8px; border-radius:6px; font-family:monospace;'>
-                    ➡ {err["text"]}
+                    ➡ {err.get('text','')}
                 </div>
             </div>
             """
@@ -305,11 +337,8 @@ def mindix():
 
     return render_template('ai.html', output=None, error=None)
 
+
 # --- Lancement ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
-
-
-
