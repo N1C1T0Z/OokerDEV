@@ -9,7 +9,6 @@
     <meta property="og:image" content="https://ookerdev.site/static/mindix.jpg">
     <meta property="og:url" content="https://ookerdev.site/mindix">
     <meta property="og:type" content="website">
-
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="MINDIX - Executor AI by Ooker DEV.">
     <meta name="twitter:description" content="MINDIX c'est pour corriger des scripts en 1 clic.">
@@ -24,51 +23,99 @@
             flex-direction: column;
             align-items: center;
             padding: 40px;
+            overflow-x: hidden;
         }
 
         h1 {
             color: #60a5fa;
-            font-size: 2em;
-            margin-bottom: 20px;
+            font-size: 2.4em;
+            margin-bottom: 30px;
+            text-shadow: 0 0 15px #3b82f6;
+            letter-spacing: 2px;
         }
 
-        /* Zone de drop */
+        /* --- Nouvelle DropZone futuriste --- */
         #dropZone {
-            border: 3px dashed #60a5fa;
-            border-radius: 12px;
-            width: 80%;
-            max-width: 600px;
-            height: 220px;
+            position: relative;
+            width: 95%;
+            max-width: 1300px;
+            height: 500px;
+            border: 2px solid rgba(96,165,250,0.6);
+            border-radius: 20px;
+            background: radial-gradient(circle at 50% 50%, rgba(96,165,250,0.06), rgba(15,23,42,0.9));
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 25px rgba(96,165,250,0.2), inset 0 0 30px rgba(96,165,250,0.05);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
+            text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease-in-out;
-            background-color: rgba(96,165,250,0.05);
+            transition: all 0.4s ease-in-out;
+            overflow: hidden;
+        }
+
+        /* Effet lumineux animé sur les bords */
+        #dropZone::before {
+            content: "";
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 22px;
+            background: linear-gradient(120deg, transparent, #60a5fa, transparent);
+            z-index: 1;
+            opacity: 0.5;
+            animation: borderFlow 4s linear infinite;
+        }
+
+        @keyframes borderFlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Grille fine en fond */
+        #dropZone::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(transparent 98%, rgba(96,165,250,0.08) 2%), 
+                              linear-gradient(90deg, transparent 98%, rgba(96,165,250,0.08) 2%);
+            background-size: 50px 50px;
+            z-index: 0;
         }
 
         #dropZone.dragover {
             background-color: rgba(96,165,250,0.15);
-            border-color: #3b82f6;
             transform: scale(1.02);
+            box-shadow: 0 0 35px rgba(96,165,250,0.4);
         }
 
         #dropZone p {
             color: #93c5fd;
-            font-size: 1.2em;
-            text-align: center;
+            font-size: 1.4em;
+            z-index: 2;
+            text-shadow: 0 0 8px rgba(96,165,250,0.3);
         }
 
         #dropZone span {
-            font-size: 0.9em;
+            font-size: 0.95em;
             color: #64748b;
+        }
+
+        .file-types {
+            margin-top: 12px;
+            font-size: 0.9em;
+            color: #94a3b8;
+            z-index: 2;
         }
 
         input[type="file"] {
             display: none;
         }
 
+        /* --- Résultats / messages --- */
         .report {
             margin-top: 40px;
             width: 90%;
@@ -117,21 +164,24 @@
         a:hover {
             background-color: #3b82f6;
             transform: scale(1.05);
+            box-shadow: 0 0 15px #3b82f6;
         }
     </style>
 </head>
 <body>
 
     <h1>🧠 MINDIX</h1>
+    <h2>v1.2</h2>
 
     <form id="uploadForm" action="/mindix" method="post" enctype="multipart/form-data">
         <div id="dropZone">
-            <p>📁 Glissez votre fichier Python ici<br><span>ou cliquez pour le sélectionner</span></p>
-            <input type="file" name="file" id="file" accept=".py">
+            <p>📁 Glissez votre fichier ici<br><span>ou cliquez pour le sélectionner</span></p>
+            <div class="file-types">Formats acceptés : <b>.py, .js, .cs, .c, .cpp, .h, .hpp</b></div>
+            <input type="file" name="file" id="file" accept=".py,.js,.cs,.c,.cpp,.h,.hpp">
         </div>
     </form>
 
-    <div id="scanMessage" class="scan-message">🧩 Scan en cours... Veuillez patienter ⏳</div>
+    <div id="scanMessage" class="scan-message">🔍 Scan du fichier en cours... Veuillez patienter ⏳</div>
 
     {% if output %}
         <div class="success">{{ output }}</div>
@@ -143,7 +193,7 @@
         </div>
     {% endif %}
 
-    <a href="/ai">Importer un autre fichier</a>
+    <a href="/ai">📄 Importer un autre fichier</a>
 
     <script>
         const dropZone = document.getElementById("dropZone");
@@ -151,19 +201,14 @@
         const form = document.getElementById("uploadForm");
         const scanMsg = document.getElementById("scanMessage");
 
-        // Clique sur la zone => ouvre le sélecteur de fichier
         dropZone.addEventListener("click", () => fileInput.click());
-
-        // Drag & drop
         dropZone.addEventListener("dragover", (e) => {
             e.preventDefault();
             dropZone.classList.add("dragover");
         });
-
         dropZone.addEventListener("dragleave", () => {
             dropZone.classList.remove("dragover");
         });
-
         dropZone.addEventListener("drop", (e) => {
             e.preventDefault();
             dropZone.classList.remove("dragover");
@@ -173,8 +218,6 @@
                 startUpload();
             }
         });
-
-        // Fichier choisi via le sélecteur
         fileInput.addEventListener("change", () => {
             if (fileInput.files.length > 0) startUpload();
         });
