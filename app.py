@@ -635,14 +635,19 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
         body = f"Bonjour {username},\n\nVeuillez vérifier votre compte en cliquant sur ce lien : {verify_link}\n\nMerci !"
         msg.attach(MIMEText(body, 'plain'))
 
+        print(f"[DEBUG] Envoi email → {to_email}")
+        print(f"[DEBUG] Serveur : {SMTP_SERVER}:{SMTP_PORT}, utilisateur : {SMTP_USER}")
+
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASS)
             server.send_message(msg)
+
         print(f"[EMAIL] Vérification envoyée à {to_email}")
         return True
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
+        print(f"[EMAIL ERROR] {repr(e)}")
         return False
+
 
 @app.route('/sign')
 def sign():
