@@ -20,6 +20,8 @@ from urllib.parse import urlencode
 import uuid
 
 app = Flask(__name__)
+CORS(app)
+app.secret_key = "ookerdev_!_2025_super_secret_key_&@#!"
 
 # ----------------------------
 # Configuration générale
@@ -350,12 +352,12 @@ def repackage_files(directory, original_filename):
 def root():
     return redirect(url_for('home'))
 
-@app.route('/home')
+@app.route("/home")
 def home():
-    logged_in = False
     if 'username' in session:
-        logged_in = True
-    return render_template('home.html', logged_in=logged_in)
+        return render_template("home.html", logged_in=True)
+    else:
+        return render_template("home.html", logged_in=False)
 
 
 @app.route('/project')
