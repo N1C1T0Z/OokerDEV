@@ -644,6 +644,8 @@ def sign():
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
+    import requests
+
     data = request.get_json(force=True)
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
@@ -664,15 +666,40 @@ def api_register():
         "token": verify_token
     }
 
+    # Sauvegarde sur le stockage distant
     if not save_remote_users(users):
         return jsonify({"error": "Erreur lors de l'enregistrement distant"}), 500
 
-    # Envoi de l’email de vérification
-    if not send_verification_email(email, username, verify_token):
-        # compte créé mais mail pas envoyé
-        return jsonify({"warning": "Compte créé mais email non envoyé"}), 200
+    # Envoi de la requête d'envoi d'email au serveur de stockage
+    try:
+        STORAGE_URL = "http://127.0.0.1:27205/send_email"  # ou IP publique du stockage
+        payload = {
+            "to": email,
+            "username": username,
+            "token": verify_token
+        }
+        print(f"[DEBUG] Envoi demande d'email à {STORAGE_URL} pour {email}")
+        response = requests.post(STORAGE_URL, json=payload, timeout=10)
+        print("[DEBUG] Réponse stockage:", response.status_code, response.text)
 
-    return jsonify({"success": True, "message": "Compte créé, vérifiez votre email pour activer votre compte"})
+        if response.status_code != 200:
+            return jsonify({
+                "warning": "Compte créé mais email non envoyé (erreur stockage)",
+                "details": response.text
+            }), 200
+
+    except Exception as e:
+        print(f"[EMAIL ERROR via stockage] {e}")
+        return jsonify({
+            "warning": "Compte créé mais email non envoyé (erreur de connexion au stockage)"
+        }), 200
+
+    # Succès total
+    return jsonify({
+        "success": True,
+        "message": "Compte créé, vérifiez votre email pour activer votre compte"
+    })
+
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
