@@ -111,31 +111,40 @@ def remote_upload_file(path, file_stream, filename=None, method="POST"):
     Envoie un fichier vers le stockage distant.
     - path: chemin relatif sur le storage (ex: 'data/users.json')
     - file_stream: bytes-like ou file-like
-    - filename: si fourni, utilisé en multipart form-data (nom côté client)
+    - filename: si fourni, utilisé pour multipart form-data (nom côté client)
     - method: 'POST' ou 'PUT'
+
+    Spécial pour users.json : envoie le JSON pur via PUT sans multipart.
     """
     url = f"{REMOTE_STORAGE_BASE}/files/{path}"
-    headers = {"X-API-KEY": REMOTE_API_KEY}  # clé API ajoutée
+    headers = {"X-API-KEY": REMOTE_API_KEY}
+
     try:
-        if filename:
-            files = {"file": (filename, file_stream)}
-            if method.upper() == "PUT":
-                resp = requests.put(url, headers=headers, files=files, timeout=30)
-            else:
-                resp = requests.post(url, headers=headers, files=files, timeout=30)
-        else:
+        # Si c'est users.json et PUT -> envoyer le JSON brut
+        if filename == "users.json" and method.upper() == "PUT":
             data = file_stream.read() if hasattr(file_stream, "read") else file_stream
-            if method.upper() == "PUT":
-                resp = requests.put(url, headers=headers, data=data, timeout=30)
+            resp = requests.put(url, headers=headers, data=data, timeout=30)
+        else:
+            # Autres fichiers
+            if filename:
+                files = {"file": (filename, file_stream)}
+                if method.upper() == "PUT":
+                    resp = requests.put(url, headers=headers, files=files, timeout=30)
+                else:
+                    resp = requests.post(url, headers=headers, files=files, timeout=30)
             else:
-                resp = requests.post(url, headers=headers, data=data, timeout=30)
+                data = file_stream.read() if hasattr(file_stream, "read") else file_stream
+                if method.upper() == "PUT":
+                    resp = requests.put(url, headers=headers, data=data, timeout=30)
+                else:
+                    resp = requests.post(url, headers=headers, data=data, timeout=30)
 
         print(f"[UPLOAD] {url} -> {resp.status_code}")
         return resp
+
     except requests.RequestException as e:
         print(f"[ERROR] Upload failed: {e}")
         return None
-
 
 def remote_delete_file(path):
     url = f"{REMOTE_STORAGE_BASE}/files/{path}"
