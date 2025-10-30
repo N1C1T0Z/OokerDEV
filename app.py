@@ -615,6 +615,25 @@ def save_remote_users(users: dict):
     print("[SUCCESS] users.json sauvegardé sur le stockage distant")
     return True
 
+def send_verification_email(to_email: str, username: str, token: str) -> bool:
+    try:
+        verify_link = f"{VERIFY_BASE_URL}?token={token}&user={username}"
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_USER
+        msg['To'] = to_email
+        msg['Subject'] = "Vérification de votre compte"
+
+        body = f"Bonjour {username},\n\nVeuillez vérifier votre compte en cliquant sur ce lien : {verify_link}\n\nMerci !"
+        msg.attach(MIMEText(body, 'plain'))
+
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+        print(f"[EMAIL] Vérification envoyée à {to_email}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL ERROR] {e}")
+        return False
 
 @app.route('/sign')
 def sign():
