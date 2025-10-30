@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tableau de bord — Ooker Dev</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('favicon') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 24px;
+        }
+        .card {
+            background: #111827;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .profile-img {
+            width: 96px;
+            height: 96px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.06);
+            box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+        }
+        .welcome {
+            flex: 1;
+        }
+        .welcome h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #e6eef8;
+        }
+        .welcome p {
+            margin: 6px 0 0 0;
+            color: #9ca3af;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .btn {
+            background: linear-gradient(135deg,#3b82f6,#2563eb);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 6px 14px rgba(37,99,235,0.12);
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(37,99,235,0.18); }
+        .btn.secondary {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #e6eef8;
+            box-shadow: none;
+        }
+
+        @media (max-width: 640px) {
+            .card { flex-direction: column; text-align: center; }
+            .profile-img { width: 80px; height: 80px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <img src="{{ url_for('static', filename='profil.png') }}" alt="Profil" class="profile-img">
+
+            <div class="welcome">
+                <h1>Bienvenue {{ username | e }}</h1>
+                <p>Content de te revoir sur Ooker Dev — ton tableau de bord personnel.</p>
+
+                <div class="actions">
+                    <a href="{{ url_for('home') }}" class="btn">Accueil</a>
+
+                    <!-- logout: renvoie POST vers /logout (à implémenter côté serveur) -->
+                    <form action="{{ url_for('logout') if 'logout' in globals() else '/logout' }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn secondary">Se déconnecter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section d'exemples rapides -->
+        <section style="margin-top:22px; color:#cbd5e1;">
+            <h3 style="margin-bottom:8px; color:#e6eef8;">Raccourcis</h3>
+            <ul>
+                <li><a href="/home" style="color:#93c5fd;">Accueil</a></li>
+                <li><a href="/mindix" style="color:#93c5fd;">Accéder à MINDIX</a></li>
+                <li><a href="/soon" style="color:#93c5fd;">Soon</a></li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>
