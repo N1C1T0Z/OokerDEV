@@ -624,30 +624,18 @@ def save_remote_users(users: dict):
     print("[SUCCESS] users.json sauvegardé sur le stockage distant")
     return True
 
-def send_verification_email(to_email: str, username: str, token: str) -> bool:
+def send_verification_request_to_storage(email, username, token):
+    import requests
     try:
-        verify_link = f"{VERIFY_BASE_URL}?token={token}&user={username}"
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USER
-        msg['To'] = to_email
-        msg['Subject'] = "Vérification de votre compte"
-
-        body = f"Bonjour {username},\n\nVeuillez vérifier votre compte en cliquant sur ce lien : {verify_link}\n\nMerci !"
-        msg.attach(MIMEText(body, 'plain'))
-
-        print(f"[DEBUG] Envoi email → {to_email}")
-        print(f"[DEBUG] Serveur : {SMTP_SERVER}:{SMTP_PORT}, utilisateur : {SMTP_USER}")
-
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-            server.login(SMTP_USER, SMTP_PASS)
-            server.send_message(msg)
-
-        print(f"[EMAIL] Vérification envoyée à {to_email}")
-        return True
+        response = requests.post(
+            "http://<IP_DU_STOCKAGE>:27205/send_email",
+            json={"to": email, "username": username, "token": token}
+        )
+        print("[DEBUG] Réponse stockage :", response.text)
+        return response.status_code == 200
     except Exception as e:
-        print(f"[EMAIL ERROR] {repr(e)}")
+        print("[EMAIL ERROR]", e)
         return False
-
 
 @app.route('/sign')
 def sign():
