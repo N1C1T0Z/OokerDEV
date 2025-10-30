@@ -405,6 +405,7 @@ def favicon():
 # ----------------------------
 # Endpoints MINDIX / AI
 # ----------------------------
+@app.route('/mindix-v2', methods=['GET', 'POST'])
 @app.route('/mindix', methods=['GET', 'POST'])
 @app.route('/ai', methods=['GET', 'POST'])
 def mindix():
