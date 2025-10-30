@@ -10,7 +10,14 @@ import requests
 import subprocess
 import shlex
 from io import BytesIO
-from flask import Flask, render_template, redirect, url_for, request, jsonify, send_file, abort
+from flask import Flask, render_template, redirect, url_for, request, jsonify, send_file, abort, send_from_directory
+
+# Ajouts pour l'email de vérification
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from urllib.parse import urlencode
+import uuid
 
 app = Flask(__name__)
 
@@ -27,6 +34,15 @@ USERS_FILE_PATH = "data/users.json"  # chemin logique pour stockage distant
 # Remote storage configuration (serveur fourni)
 REMOTE_STORAGE_BASE = "http://31.6.7.43:27205"
 REMOTE_API_KEY = "HIDHkdhjsdHOIJSIdojofojoJODHIZYUOIdjdocjdo5z56f6s54dOPzjpJSo3dD6d4f6DE6e46f66sqD4f6s"
+
+# ----------------------------
+# Configuration email (LWS Webmail) - **à configurer**
+# ----------------------------
+SMTP_SERVER = "mail.lwspanel.com"  # ou "smtp.lwspanel.com" selon ton hébergement
+SMTP_PORT = 587
+SMTP_USER = "ton_adresse@tondomaine.fr"  # <-- remplace par ton email LWS
+SMTP_PASS = "ton_mot_de_passe"           # <-- remplace par ton mot de passe LWS
+VERIFY_BASE_URL = "https://ton-domaine.fr/verify"  # <-- ton domaine public + /verify
 
 # Create local data dir if missing
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -602,11 +618,23 @@ def api_register():
     if username in users:
         return jsonify({"error": "Nom d'utilisateur déjà pris"}), 400
 
-    users[username] = {"password": password, "email": email}
+    verify_token = str(uuid.uuid4())
+    users[username] = {
+        "password": password,
+        "email": email,
+        "verify": False,
+        "token": verify_token
+    }
+
     if not save_remote_users(users):
         return jsonify({"error": "Erreur lors de l'enregistrement distant"}), 500
 
-    return jsonify({"success": True, "message": "Compte créé avec succès"})
+    # Envoi de l’email de vérification
+    if not send_verification_email(email, username, verify_token):
+        # compte créé mais mail pas envoyé
+        return jsonify({"warning": "Compte créé mais email non envoyé"}), 200
+
+    return jsonify({"success": True, "message": "Compte créé, vérifiez votre email pour activer votre compte"})
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -618,7 +646,30 @@ def api_login():
     if username not in users or users[username]['password'] != password:
         return jsonify({"error": "Identifiants invalides"}), 401
 
+    if not users[username].get('verify', False):
+        return jsonify({"error": "Compte non vérifié. Consultez votre email."}), 403
+
     return jsonify({"success": True, "message": f"Bienvenue {username}!"})
+
+@app.route('/verify')
+def verify_email():
+    token = request.args.get('token', '').strip()
+    username = request.args.get('user', '').strip()
+    if not token or not username:
+        return "Lien invalide", 400
+
+    users = load_remote_users()
+    if username not in users:
+        return "Utilisateur introuvable", 404
+
+    if users[username].get('token') != token:
+        return "Token invalide ou expiré", 400
+
+    users[username]['verify'] = True
+    users[username].pop('token', None)
+    save_remote_users(users)
+
+    return f"<h2>Email vérifié ✅</h2><p>Bonjour {username}, votre compte est maintenant activé.</p>"
 
 # ----------------------------
 # Lancement
