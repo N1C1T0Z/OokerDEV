@@ -39,6 +39,7 @@
             color: white;
             font-weight: bold;
             cursor: pointer;
+            transition: 0.2s;
         }
         button:hover { background: #2563eb; }
         .toggle {
@@ -50,13 +51,14 @@
         .msg {
             margin-top: 10px;
             font-size: 14px;
-            color: #facc15;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="card">
         <h2 id="form-title">Connexion</h2>
+
         <div id="login-form">
             <input type="text" id="login-username" placeholder="Nom d'utilisateur"><br>
             <input type="password" id="login-password" placeholder="Mot de passe"><br>
@@ -95,11 +97,24 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password})
             });
+
             const data = await res.json();
-            document.getElementById('msg').innerText = data.success ? data.message : data.error;
+            const msgEl = document.getElementById('msg');
+
+            let message = "Erreur inconnue";
+            let color = "#f87171";
+
             if (data.success) {
+                message = data.message;
+                color = "#4ade80"; // vert
                 setTimeout(() => window.location.href = '/home', 1000);
+            } else if (data.error) {
+                message = data.error;
+                color = "#f87171"; // rouge
             }
+
+            msgEl.innerText = message;
+            msgEl.style.color = color;
         }
 
         async function register() {
@@ -112,9 +127,27 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password, email})
             });
+
             const data = await res.json();
-            document.getElementById('msg').innerText = data.success ? data.message : data.error;
-            if (data.success) toggleForms();
+
+            let message = "Erreur inconnue";
+            let color = "#f87171"; // rouge par défaut
+
+            if (data.success) {
+                message = data.message;
+                color = "#4ade80"; // vert
+                toggleForms();
+            } else if (data.warning) {
+                message = data.warning;
+                color = "#facc15"; // jaune
+            } else if (data.error) {
+                message = data.error;
+                color = "#f87171"; // rouge
+            }
+
+            const msgEl = document.getElementById('msg');
+            msgEl.innerText = message;
+            msgEl.style.color = color;
         }
     </script>
 </body>
