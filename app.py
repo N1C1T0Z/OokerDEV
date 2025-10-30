@@ -11,6 +11,7 @@ import subprocess
 import shlex
 from io import BytesIO
 from flask import Flask, render_template, redirect, url_for, request, jsonify, send_file, abort, send_from_directory, session
+from flask_cors import CORS
 
 # Ajouts pour l'email de vérification
 import smtplib
