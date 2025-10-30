@@ -396,6 +396,12 @@ def nova():
 def page_not_found(e):
     return render_template('404.html'), 404
 
+from flask import send_from_directory
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(BASE_DIR, 'ressources'),
+                               'icon.ico', mimetype='image/vnd.microsoft.icon')
 # ----------------------------
 # Endpoints MINDIX / AI
 # ----------------------------
@@ -618,6 +624,6 @@ def api_login():
 # ----------------------------
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    debug_mode = True
+    debug_mode = False
     print(f"App démarrée. Stockage distant : {REMOTE_STORAGE_BASE} (clé fournie).")
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
