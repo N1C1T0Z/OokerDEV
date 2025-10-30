@@ -35,14 +35,6 @@ USERS_FILE_PATH = "data/users.json"  # chemin logique pour stockage distant
 REMOTE_STORAGE_BASE = "http://31.6.7.43:27205"
 REMOTE_API_KEY = "HIDHkdhjsdHOIJSIdojofojoJODHIZYUOIdjdocjdo5z56f6s54dOPzjpJSo3dD6d4f6DE6e46f66sqD4f6s"
 
-# ----------------------------
-# Configuration email (LWS Webmail) - **à configurer**
-# ----------------------------
-SMTP_SERVER = "mail.ookerdev.site"
-SMTP_PORT = 465
-SMTP_USER = "support@ookerdev.site"
-SMTP_PASS = "HAOSDh!J2e"
-VERIFY_BASE_URL = "https://ookerdev.site/verify"
 
 # Create local data dir if missing
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -628,9 +620,6 @@ def save_remote_users(users: dict):
 def sign():
     """Affiche la page login/register switchable."""
     return render_template('login.html')
-
-import uuid
-import requests
 
 STOCKAGE_URL = "http://31.6.7.43:27205"  # URL de ton serveur de stockage
 
