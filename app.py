@@ -38,11 +38,11 @@ REMOTE_API_KEY = "HIDHkdhjsdHOIJSIdojofojoJODHIZYUOIdjdocjdo5z56f6s54dOPzjpJSo3d
 # ----------------------------
 # Configuration email (LWS Webmail) - **à configurer**
 # ----------------------------
-SMTP_SERVER = "mail.ookerdev.site"  # ou "smtp.lwspanel.com" selon ton hébergement
+SMTP_SERVER = "mail.ookerdev.site"
 SMTP_PORT = 465
-SMTP_USER = "support@ookerdev.site"  # <-- remplace par ton email LWS
-SMTP_PASS = "HAOSDh!J2e"           # <-- remplace par ton mot de passe LWS
-VERIFY_BASE_URL = "https://ookerdev.site/verify"  # <-- ton domaine public + /verify
+SMTP_USER = "support@ookerdev.site"
+SMTP_PASS = "HAOSDh!J2e"
+VERIFY_BASE_URL = "https://ookerdev.site/verify"
 
 # Create local data dir if missing
 os.makedirs(DATA_DIR, exist_ok=True)
