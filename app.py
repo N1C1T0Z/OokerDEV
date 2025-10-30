@@ -109,13 +109,13 @@ def remote_get_file(path):
 def remote_upload_file(path, file_stream, filename=None, method="POST"):
     """
     Envoie un fichier vers le stockage distant.
-    - path: chemin relatif sur le storage (ex: 'ai_uploads/test.py')
+    - path: chemin relatif sur le storage (ex: 'data/users.json')
     - file_stream: bytes-like ou file-like
     - filename: si fourni, utilisé en multipart form-data (nom côté client)
     - method: 'POST' ou 'PUT'
     """
     url = f"{REMOTE_STORAGE_BASE}/files/{path}"
-    headers = remote_headers()
+    headers = {"X-API-KEY": REMOTE_API_KEY}  # clé API ajoutée
     try:
         if filename:
             files = {"file": (filename, file_stream)}
@@ -129,9 +129,13 @@ def remote_upload_file(path, file_stream, filename=None, method="POST"):
                 resp = requests.put(url, headers=headers, data=data, timeout=30)
             else:
                 resp = requests.post(url, headers=headers, data=data, timeout=30)
+
+        print(f"[UPLOAD] {url} -> {resp.status_code}")
         return resp
     except requests.RequestException as e:
+        print(f"[ERROR] Upload failed: {e}")
         return None
+
 
 def remote_delete_file(path):
     url = f"{REMOTE_STORAGE_BASE}/files/{path}"
@@ -593,11 +597,24 @@ def load_remote_users():
         return {}
 
 def save_remote_users(users: dict):
-    """Écrit le fichier data/users.json sur le stockage distant."""
+    """
+    Écrit le fichier data/users.json sur le stockage distant avec clé API.
+    Retourne True si succès (200 ou 201), False sinon.
+    """
     data_bytes = json.dumps(users, ensure_ascii=False, indent=4).encode('utf-8')
     stream = BytesIO(data_bytes)
     upload_resp = remote_upload_file(USERS_FILE_PATH, stream, filename="users.json", method="PUT")
-    return upload_resp is not None and upload_resp.status_code in (200, 201)
+
+    if upload_resp is None:
+        print("[ERROR] Impossible de contacter le stockage distant")
+        return False
+    if upload_resp.status_code not in (200, 201):
+        print(f"[ERROR] Stockage distant a répondu {upload_resp.status_code}: {upload_resp.text}")
+        return False
+
+    print("[SUCCESS] users.json sauvegardé sur le stockage distant")
+    return True
+
 
 @app.route('/sign')
 def sign():
