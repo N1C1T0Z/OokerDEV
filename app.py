@@ -124,6 +124,28 @@ def delete_project():
 def page_not_found(e):
     return render_template('404.html'), 404
 
+# ----------------------------
+# Nova-Life (conserve la logique)
+# ----------------------------
+NOVA_FILE = os.path.join(DATA_DIR, "nova_projects.json")
+def load_nova_projects():
+    if not os.path.exists(NOVA_FILE):
+        return {}
+    with open(NOVA_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return {}
+
+@app.route('/nova-life')
+@app.route('/project/nova-life')
+def nova():
+    admin_ips = load_admin_ips()
+    user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    is_admin = user_ip in admin_ips
+    projects = load_nova_projects()
+    return render_template('nova.html', is_admin=is_admin, projects=projects)
+
 # --- MINDIX : Analyse et correction ---
 AI_ALLOWED_SINGLE = ('.py', '.js', '.cs', '.c', '.cpp', '.h', '.hpp')
 AI_ALLOWED_ARCHIVE = ('.zip', '.tar', '.gz')
