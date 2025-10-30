@@ -34,7 +34,7 @@
             letter-spacing: 2px;
         }
 
-        /* --- Nouvelle DropZone futuriste --- */
+        /* --- DropZone futuriste --- */
         #dropZone {
             position: relative;
             width: 95%;
@@ -55,7 +55,6 @@
             overflow: hidden;
         }
 
-        /* Effet lumineux animé sur les bords */
         #dropZone::before {
             content: "";
             position: absolute;
@@ -75,7 +74,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Grille fine en fond */
         #dropZone::after {
             content: "";
             position: absolute;
@@ -115,7 +113,6 @@
             display: none;
         }
 
-        /* --- Résultats / messages --- */
         .report {
             margin-top: 40px;
             width: 90%;
@@ -149,6 +146,24 @@
             50% { opacity: 1; }
         }
 
+        .download-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #22c55e;
+            color: #0f172a;
+            font-weight: bold;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .download-btn:hover {
+            background-color: #16a34a;
+            transform: scale(1.05);
+            box-shadow: 0 0 12px #16a34a;
+        }
+
         a {
             display: inline-block;
             margin-top: 30px;
@@ -171,26 +186,32 @@
 <body>
 
     <h1>🧠 MINDIX</h1>
-    <h2>v1.3</h2>
+    <h2>v2</h2>
 
     <form id="uploadForm" action="/mindix" method="post" enctype="multipart/form-data">
         <div id="dropZone">
             <p>📁 Glissez votre fichier ici<br><span>ou cliquez pour le sélectionner</span></p>
-            <div class="file-types">Formats acceptés : <b>.py, .js, .cs, .c, .cpp, .h, .hpp</b></div>
-            <input type="file" name="file" id="file" accept=".py,.js,.cs,.c,.cpp,.h,.hpp">
+            <div class="file-types">
+                Formats acceptés : <b>.py, .js, .cs, .c, .cpp, .h, .hpp, .zip, .tar, .tar.gz</b>
+            </div>
+            <input type="file" name="file" id="file" accept=".py,.js,.cs,.c,.cpp,.h,.hpp,.zip,.tar,.gz">
         </div>
     </form>
 
     <div id="scanMessage" class="scan-message">🔍 Scan du fichier en cours... Veuillez patienter ⏳</div>
 
     {% if output %}
-        <div class="success">{{ output }}</div>
+        <div class="success">{{ output|safe }}</div>
     {% endif %}
 
     {% if error %}
         <div class="report">
             {{ error|safe }}
         </div>
+    {% endif %}
+
+    {% if download_link %}
+        <a href="{{ download_link }}" class="download-btn">📥 Télécharger le fichier corrigé</a>
     {% endif %}
 
     <a href="/ai">📄 Importer un autre fichier</a>
