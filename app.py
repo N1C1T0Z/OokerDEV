@@ -628,7 +628,7 @@ def send_verification_request_to_storage(email, username, token):
     import requests
     try:
         response = requests.post(
-            "http://<IP_DU_STOCKAGE>:27205/send_email",
+            "http://31.6.7.43:27205/send_email",
             json={"to": email, "username": username, "token": token}
         )
         print("[DEBUG] Réponse stockage :", response.text)
