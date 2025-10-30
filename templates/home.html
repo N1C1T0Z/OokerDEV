@@ -33,6 +33,13 @@
             <div class="logo-img">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Ooker Dev">
             </div>
+            <div class="user-area">
+                {% if logged_in %}
+                    <img src="{{ url_for('static', filename='profil.png') }}" alt="Profil" class="profile-img">
+                {% else %}
+                    <a href="{{ url_for('sign') }}" class="btn-login">Connexion</a>
+                {% endif %}
+            </div>
         </nav>
     </header>
 
@@ -287,6 +294,7 @@
     </script>
 </body>
 </html>
+
 
 
 
