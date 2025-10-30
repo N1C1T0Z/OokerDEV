@@ -352,7 +352,11 @@ def root():
 
 @app.route('/home')
 def home():
-    return render_template('home.html')
+    logged_in = False
+    if 'username' in session:
+        logged_in = True
+    return render_template('home.html', logged_in=logged_in)
+
 
 @app.route('/project')
 def project():
