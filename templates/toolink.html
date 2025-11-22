@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TooLink — Admin</title>
+<style>
+  /* Styles inchangés de ton code précédent */
+  :root{
+    --bg:#0b0f14;
+    --card:#0f1720;
+    --muted:#94a3b8;
+    --accent:#60a5fa;
+    --accent-2:#7c3aed;
+    --success:#10b981;
+    --danger:#ef4444;
+    --glass: rgba(255,255,255,0.03);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Noto Mono", monospace;
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#041017);color:#e6eef8}
+  .wrap{max-width:1100px;margin:28px auto;padding:20px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:20px;margin:0;color:white;letter-spacing:0.2px}
+  p.lead{color:var(--muted);margin:6px 0 0;font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+  .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.02)}
+  .card h2{margin:0 0 10px;font-size:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type="text"], textarea, select{
+    width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:#e6eef8;font-size:14px;
+  }
+  button{
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:0;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer;
+    box-shadow:0 8px 20px rgba(96,165,250,0.12);
+  }
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);box-shadow:none}
+  .muted{color:var(--muted);font-size:13px}
+  .routes-list{max-height:360px;overflow:auto;padding:6px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+  .route-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
+  .route-item .left{display:flex;gap:10px;align-items:center}
+  .route-key{font-family:var(--mono);font-size:13px;background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:6px}
+  .tiny{font-size:12px;color:var(--muted)}
+  .controls{display:flex;gap:8px;align-items:center}
+  .stats-table{width:100%;border-collapse:collapse;margin-top:8px}
+  .stats-table th, .stats-table td{padding:8px 6px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px;color:#dbeafe}
+  .no-data{padding:14px;border-radius:8px;background:rgba(255,255,255,0.02);color:var(--muted);text-align:center}
+  .top-row{display:flex;gap:8px;align-items:center}
+  .small{font-size:12px}
+  .copy-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:var(--muted);cursor:pointer}
+  .inline{display:inline-block}
+  footer{color:var(--muted);font-size:12px;margin-top:14px;text-align:center}
+  .flex-col{display:flex;flex-direction:column;gap:8px}
+  .flex-row{display:flex;gap:8px;align-items:center}
+  .pill{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
+  .badge{padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.3);font-size:12px}
+  .ok{color:var(--success)}
+  .err{color:var(--danger)}
+  .switch{display:inline-flex;align-items:center;gap:8px}
+  .small-muted{font-size:12px;color:var(--muted)}
+  @media (max-width:980px){
+    .grid{grid-template-columns:1fr;padding-bottom:40px}
+    .wrap{padding:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>TooLink — Admin</h1>
+      <p class="lead">Crée des routes courtes et surveille (dark UI).</p>
+    </div>
+    <div class="top-row">
+      <div class="pill" id="storageInfo">Stockage distant : <span class="small-muted" id="storageHost">--</span></div>
+      <div class="pill" id="lastRefresh">Dernière maj : --</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Créer une nouvelle route</h2>
+      <div style="margin-bottom:8px" class="muted">Clique sur « Créer » pour générer une route aléatoire sur le serveur (POST <code>/create-link</code>).</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="btnCreate">➕ Créer</button>
+        <button id="btnRefresh" class="ghost">🔄 Rafraîchir la liste</button>
+        <button id="btnAuto" class="ghost">⏱ Auto: OFF</button>
+      </div>
+      <div style="margin-bottom:12px" id="creationResult" class="muted">Aucun lien créé récemment.</div>
+      <h2 style="margin-top:8px">Mes routes enregistrées</h2>
+      <div class="muted" style="margin-bottom:8px">Fichier distant : <code>data/TooLink/root.txt</code></div>
+      <div class="routes-list" id="routesList">
+        <div class="no-data" id="noRoutes">Aucune route trouvée.</div>
+      </div>
+      <div style="margin-top:10px" class="muted small">Actions : <span class="tiny">Copier</span> / <span class="tiny">Ouvrir</span> / <span class="tiny">Définir redirection</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Surveillance du trafic</h2>
+      <div class="muted" style="margin-bottom:8px">Si ton backend enregistre les hits dans <code>data/TooLink/stats.json</code>, tu verras ici les entrées.</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="btnRefreshStats" class="ghost">🔄 Rafraîchir stats</button>
+        <button id="btnClearStats" class="ghost">🧹 Effacer affichage</button>
+      </div>
+      <div id="statsContainer">
+        <div class="no-data" id="noStats">Aucune statistique disponible.</div>
+      </div>
+      <h3 style="margin-top:12px">Options</h3>
+      <div class="flex-col">
+        <div class="flex-row">
+          <label style="width:120px" class="small-muted">Base URL</label>
+          <input type="text" id="baseUrl" value="" placeholder="Laisser vide = même domaine" />
+        </div>
+        <div class="flex-row">
+          <label style="width:120px" class="small-muted">Intervalle auto (s)</label>
+          <input type="text" id="autoInterval" value="8" style="width:80px" />
+          <div class="small-muted">Intervalle pour l'auto-refresh de la liste (si activé).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="muted">Utilise les endpoints existants : <code>/create-link</code>, <code>/toolink/list</code>, <code>/toolink/set_redirect</code></div>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const storageHostEl = document.getElementById('storageHost');
+  const lastRefreshEl = document.getElementById('lastRefresh');
+  const btnCreate = document.getElementById('btnCreate');
+  const btnRefresh = document.getElementById('btnRefresh');
+  const btnAuto = document.getElementById('btnAuto');
+  const creationResult = document.getElementById('creationResult');
+  const routesList = document.getElementById('routesList');
+  const noRoutes = document.getElementById('noRoutes');
+  const baseUrlInput = document.getElementById('baseUrl');
+  const autoIntervalInput = document.getElementById('autoInterval');
+
+  const btnRefreshStats = document.getElementById('btnRefreshStats');
+  const btnClearStats = document.getElementById('btnClearStats');
+  const statsContainer = document.getElementById('statsContainer');
+
+  let autoMode = false;
+  let autoTimer = null;
+  const defaultBase = window.location.origin;
+
+  function fullBase() {
+    const v = baseUrlInput.value.trim();
+    return v ? v.replace(/\/$/, '') : defaultBase;
+  }
+
+  async function createLink() {
+    creationResult.textContent = 'Création en cours…';
+    try {
+      const resp = await fetch('/create-link', { method:'POST' });
+      const json = await resp.json();
+      if (json && json.success) {
+        const route = json.route;
+        creationResult.innerHTML = `<span style="color:var(--success)">✅ Route créée : </span> <code class="route-key">${route}</code>`;
+        await refreshList();
+      } else {
+        creationResult.innerHTML = `<span style="color:var(--danger)">❌ Erreur :</span> ${JSON.stringify(json || resp.status)}`;
+      }
+    } catch {
+      creationResult.innerHTML = `<span style="color:var(--danger)">❌ Erreur réseau</span>`;
+    }
+  }
+
+  function makeToolinkHref(key){
+    const base = fullBase();
+    return `${base}/t/${encodeURIComponent(key)}`;
+  }
+
+  async function refreshList(){
+    lastRefreshEl.textContent = 'Dernière maj : --';
+    noRoutes.style.display = 'none';
+    routesList.querySelectorAll('.route-item').forEach(n => n.remove());
+    try {
+      const r = await fetch(`/toolink/list`);
+      if (r.status === 200) {
+        const data = await r.json();
+        const lines = data.routes || [];
+        if (!lines.length) {
+          noRoutes.style.display = 'block';
+          lastRefreshEl.textContent = 'Dernière maj : ' + new Date().toLocaleString();
+          return;
+        }
+        lines.forEach(k => {
+          const item = document.createElement('div');
+          item.className = 'route-item';
+          item.innerHTML = `
+            <div class="left">
+              <div class="route-key">${k}</div>
+              <div class="tiny">/t/${k}</div>
+            </div>
+            <div class="controls">
+              <button class="copy-btn" data-key="${k}">Copier</button>
+              <button class="ghost open-btn" data-key="${k}">Ouvrir</button>
+              <button class="ghost redirect-btn" data-key="${k}">Définir redirection</button>
+            </div>
+          `;
+          routesList.appendChild(item);
+        });
+        attachRouteButtons();
+        lastRefreshEl.textContent = 'Dernière maj : ' + new Date().toLocaleString();
+      } else {
+        noRoutes.style.display = 'block';
+        noRoutes.textContent = 'Impossible de charger la liste (statut ' + r.status + ')';
+      }
+    } catch {
+      noRoutes.style.display = 'block';
+      noRoutes.textContent = 'Erreur lors du chargement des routes';
+    }
+  }
+
+  function attachRouteButtons(){
+    routesList.querySelectorAll('.copy-btn').forEach(btn=>{
+      btn.onclick = null;
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-key');
+        const href = makeToolinkHref(key);
+        navigator.clipboard?.writeText(href).then(()=> {
+          btn.textContent = 'Copié ✓';
+          setTimeout(()=> btn.textContent = 'Copier',900);
+        }).catch(()=> {
+          alert('Impossible de copier, copie manuelle : ' + href);
+        });
+      };
+    });
+    routesList.querySelectorAll('.open-btn').forEach(btn=>{
+      btn.onclick = null;
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-key');
+        window.open(makeToolinkHref(key), '_blank');
+      };
+    });
+    routesList.querySelectorAll('.redirect-btn').forEach(btn=>{
+      btn.onclick = null;
+      btn.onclick = async () => {
+        const key = btn.getAttribute('data-key');
+        const url = prompt('Entrez l’URL de redirection pour /t/'+key);
+        if(url){
+          try{
+            const resp = await fetch('/toolink/set_redirect',{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({key, url})
+            });
+            const json = await resp.json();
+            if(json.success){
+              alert('Redirection définie : ' + url);
+            } else {
+              alert('Erreur : ' + (json.error||''));
+            }
+          } catch(e){
+            alert('Erreur réseau lors de la définition de la redirection');
+          }
+        }
+      };
+    });
+  }
+
+  async function refreshStats(){
+    statsContainer.querySelectorAll('table, .no-data').forEach(n=>n.remove());
+    try {
+      const r = await fetch(`/files_remote/get/data/TooLink/stats.json`);
+      if (r.status === 200) {
+        let arr = [];
+        try { arr = await r.json(); } catch { arr = []; }
+        if (!Array.isArray(arr) || arr.length === 0){
+          statsContainer.appendChild(makeNoStats('Aucune entrée dans stats.json'));
+          return;
+        }
+        const tbl = document.createElement('table');
+        tbl.className = 'stats-table';
+        tbl.innerHTML = `<thead><tr><th>Route</th><th>IP</th><th>UA</th><th>Time</th></tr></thead>`;
+        const tbody = document.createElement('tbody');
+        arr.slice().reverse().forEach(entry=>{
+          const tr = document.createElement('tr');
+          const time = entry.time ? new Date(entry.time).toLocaleString() : entry.time || '-';
+          tr.innerHTML = `<td class="tiny">${entry.key||entry.route||'-'}</td>
+                          <td class="tiny">${entry.ip||'-'}</td>
+                          <td class="tiny">${(entry.ua||'-').slice(0,60)}</td>
+                          <td class="tiny">${time}</td>`;
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        statsContainer.appendChild(tbl);
+      } else {
+        statsContainer.appendChild(makeNoStats('stats.json introuvable (' + r.status + ')'));
+      }
+    } catch {
+      statsContainer.appendChild(makeNoStats('Erreur lors du chargement des statistiques'));
+    }
+  }
+
+  function makeNoStats(msg){
+    const d = document.createElement('div');
+    d.className = 'no-data';
+    d.textContent = msg || 'Aucune statistique disponible';
+    return d;
+  }
+
+  // Gestion des événements
+  btnCreate.onclick = createLink;
+  btnRefresh.onclick = refreshList;
+  btnRefreshStats.onclick = refreshStats;
+  btnClearStats.onclick = ()=> {
+    statsContainer.querySelectorAll('*').forEach(n=>n.remove());
+    statsContainer.appendChild(makeNoStats('Affichage effacé.'));
+  };
+
+  btnAuto.onclick = ()=>{
+    autoMode = !autoMode;
+    btnAuto.textContent = autoMode ? '⏱ Auto: ON' : '⏱ Auto: OFF';
+    if (autoMode) startAuto(); else stopAuto();
+  };
+
+  function startAuto(){
+    stopAuto();
+    const interval = Math.max(2, parseInt(autoIntervalInput.value||8,10));
+    autoTimer = setInterval(refreshList, interval*1000);
+    refreshList();
+  }
+  function stopAuto(){
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  }
+
+  // Initialisation
+  (async function init(){
+    storageHostEl.textContent = window.location.origin;
+    await refreshList();
+    await refreshStats();
+  })();
+})();
+</script>
+</body>
+</html>

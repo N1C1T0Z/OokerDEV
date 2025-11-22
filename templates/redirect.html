@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TooLink — Redirection</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --card:#0f1720;
+    --accent:#60a5fa;
+    --accent-2:#7c3aed;
+    --muted:#94a3b8;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Noto Mono", monospace;
+  }
+  html,body{
+    height:100%; margin:0; background:var(--bg); color:#e6eef8;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    display:flex; justify-content:center; align-items:center;
+  }
+  .container{
+    text-align:center;
+    background:var(--card);
+    padding:24px 36px;
+    border-radius:16px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.6);
+    max-width:400px;
+  }
+  h1{margin:0 0 12px; font-size:20px; color:white;}
+  p{margin:4px 0; color:var(--muted);}
+  .countdown{
+    font-family:var(--mono);
+    font-size:48px;
+    margin:16px 0;
+    color:var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="container" id="redirectContainer" data-target-url="{{ target_url }}" data-countdown="{{ countdown }}">
+  <h1>Redirection TooLink</h1>
+  <p>Vous allez être redirigé dans</p>
+  <div class="countdown" id="countdown">{{ countdown }}</div>
+</div>
+
+<!-- Scripts publicitaires -->
+<script type="text/javascript">
+	atOptions = {
+		'key' : '4bdc8ce4c711117b07afaad930e72035',
+		'format' : 'iframe',
+		'height' : 300,
+		'width' : 160,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/4bdc8ce4c711117b07afaad930e72035/invoke.js"></script>
+
+<script type="text/javascript">
+	atOptions = {
+		'key' : '857e96450def1fc5c3588fbb73a0db15',
+		'format' : 'iframe',
+		'height' : 250,
+		'width' : 300,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/857e96450def1fc5c3588fbb73a0db15/invoke.js"></script>
+
+<script type='text/javascript' src='//pl28110765.effectivegatecpm.com/23/07/19/230719c191d39f442ade4ba286d364a1.js'></script>
+
+<script type="text/javascript">
+  const container = document.getElementById('redirectContainer');
+  const targetUrl = container.dataset.targetUrl;
+  let seconds = parseInt(container.dataset.countdown, 10);
+
+  const countdownEl = document.getElementById('countdown');
+  countdownEl.textContent = seconds;
+
+  const timer = setInterval(() => {
+    seconds--;
+    countdownEl.textContent = seconds;
+    if (seconds <= 0) {
+      clearInterval(timer);
+      window.location.href = targetUrl;
+    }
+  }, 1000);
+</script>
+</body>
+</html>
