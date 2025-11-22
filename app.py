@@ -12,6 +12,9 @@ import shlex
 from io import BytesIO
 from flask import Flask, render_template, redirect, url_for, request, jsonify, send_file, abort, send_from_directory, session
 from flask_cors import CORS
+import random
+import string
+import time
 
 # Ajouts pour l'email de vérification
 import smtplib
@@ -33,6 +36,10 @@ ADMIN_FILE = os.path.join(DATA_DIR, "admin.json")
 PROJECT_FILE = os.path.join(DATA_DIR, "projects.json")
 NOVA_FILE = os.path.join(DATA_DIR, "nova_projects.json")
 USERS_FILE_PATH = "data/users.json"  # chemin logique pour stockage distant
+TOOLINK_ROOT = "data/TooLink/root.txt"
+TOOLINK_STATS = "data/TooLink/stats.json"
+TOOLINK_OWNERS = "data/TooLink/owners.json"
+TOOLINK_REDIRECTS = "data/TooLink/redirects.json"
 
 # Remote storage configuration (serveur fourni)
 REMOTE_STORAGE_BASE = "http://31.6.7.43:27205"
@@ -102,43 +109,22 @@ def remote_get_file(path):
         return None
 
 def remote_upload_file(path, file_stream, filename=None, method="POST"):
-    """
-    Envoie un fichier vers le stockage distant.
-    - path: chemin relatif sur le storage (ex: 'data/users.json')
-    - file_stream: bytes-like ou file-like
-    - filename: si fourni, utilisé pour multipart form-data (nom côté client)
-    - method: 'POST' ou 'PUT'
-
-    Spécial pour users.json : envoie le JSON pur via PUT sans multipart.
-    """
     url = f"{REMOTE_STORAGE_BASE}/files/{path}"
     headers = {"X-API-KEY": REMOTE_API_KEY}
 
     try:
-        # Si c'est users.json et PUT -> envoyer le JSON brut
-        if filename == "users.json" and method.upper() == "PUT":
-            data = file_stream.read() if hasattr(file_stream, "read") else file_stream
-            resp = requests.put(url, headers=headers, data=data, timeout=30)
+        if isinstance(file_stream, str):
+            data = file_stream.encode("utf-8")
+            resp = requests.put(url, headers=headers, data=data, timeout=30) if method.upper()=="PUT" else requests.post(url, headers=headers, data=data, timeout=30)
+        elif isinstance(file_stream, BytesIO) and filename is None:
+            file_stream.seek(0)
+            data = file_stream.read()
+            resp = requests.put(url, headers=headers, data=data, timeout=30) if method.upper()=="PUT" else requests.post(url, headers=headers, data=data, timeout=30)
         else:
-            # Autres fichiers
-            if filename:
-                files = {"file": (filename, file_stream)}
-                if method.upper() == "PUT":
-                    resp = requests.put(url, headers=headers, files=files, timeout=30)
-                else:
-                    resp = requests.post(url, headers=headers, files=files, timeout=30)
-            else:
-                data = file_stream.read() if hasattr(file_stream, "read") else file_stream
-                if method.upper() == "PUT":
-                    resp = requests.put(url, headers=headers, data=data, timeout=30)
-                else:
-                    resp = requests.post(url, headers=headers, data=data, timeout=30)
-
-        print(f"[UPLOAD] {url} -> {resp.status_code}")
+            files = {"file": (filename, file_stream)}
+            resp = requests.put(url, headers=headers, files=files, timeout=30) if method.upper()=="PUT" else requests.post(url, headers=headers, files=files, timeout=30)
         return resp
-
-    except requests.RequestException as e:
-        print(f"[ERROR] Upload failed: {e}")
+    except requests.RequestException:
         return None
 
 def remote_delete_file(path):
@@ -148,6 +134,86 @@ def remote_delete_file(path):
         return resp
     except requests.RequestException:
         return None
+
+# ----------------------------
+# TooLink utils
+# ----------------------------
+def generate_key(length=16):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+def load_toolink_routes():
+    resp = remote_get_file(TOOLINK_ROOT)
+    if resp is None or resp.status_code != 200:
+        return []
+    try:
+        text = resp.content.decode("utf-8")
+        return [l.strip() for l in text.splitlines() if l.strip()]
+    except Exception:
+        return []
+
+def save_toolink_routes(routes):
+    content = "\n".join(routes)
+    resp = remote_upload_file(TOOLINK_ROOT, content, method="PUT")
+    return resp
+
+def load_owners():
+    resp = remote_get_file(TOOLINK_OWNERS)
+    if resp is None or resp.status_code != 200:
+        return {}
+    try:
+        return json.loads(resp.content.decode("utf-8")) or {}
+    except Exception:
+        return {}
+
+def save_owners(owners):
+    data_bytes = json.dumps(owners, ensure_ascii=False, indent=2).encode("utf-8")
+    return remote_upload_file(TOOLINK_OWNERS, BytesIO(data_bytes), method="PUT")
+
+def load_redirects():
+    resp = remote_get_file(TOOLINK_REDIRECTS)
+    if resp is None or resp.status_code != 200:
+        return {}
+    try:
+        return json.loads(resp.content.decode("utf-8")) or {}
+    except Exception:
+        return {}
+
+def save_redirects(data):
+    data_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    return remote_upload_file(TOOLINK_REDIRECTS, BytesIO(data_bytes), method="PUT")
+
+def ensure_toolink_files():
+    r = remote_get_file(TOOLINK_ROOT)
+    if r is None or r.status_code != 200:
+        remote_upload_file(TOOLINK_ROOT, BytesIO(b""), filename="root.txt", method="PUT")
+    r2 = remote_get_file(TOOLINK_STATS)
+    if r2 is None or r2.status_code != 200:
+        remote_upload_file(TOOLINK_STATS, BytesIO(b"[]"), filename="stats.json", method="PUT")
+    r3 = remote_get_file(TOOLINK_OWNERS)
+    if r3 is None or r3.status_code != 200:
+        remote_upload_file(TOOLINK_OWNERS, BytesIO(b"{}"), filename="owners.json", method="PUT")
+    r4 = remote_get_file(TOOLINK_REDIRECTS)
+    if r4 is None or r4.status_code != 200:
+        remote_upload_file(TOOLINK_REDIRECTS, BytesIO(b"{}"), filename="redirects.json", method="PUT")
+
+def append_toolink_stats(entry):
+    try:
+        resp = remote_get_file(TOOLINK_STATS)
+        if resp is None or resp.status_code != 200:
+            stats = []
+        else:
+            stats = json.loads(resp.content.decode("utf-8")) or []
+        stats.append(entry)
+        data_bytes = json.dumps(stats, ensure_ascii=False, indent=2).encode("utf-8")
+        remote_upload_file(TOOLINK_STATS, BytesIO(data_bytes), filename="stats.json", method="PUT")
+        return True
+    except Exception:
+        return False
+
+def get_client_ip():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers['X-Forwarded-For'].split(',')[0].strip()
+    return request.remote_addr
 
 # ----------------------------
 # Fonctions MINDIX (analyse)
@@ -706,6 +772,112 @@ def verify_email():
     save_remote_users(users)
 
     return f"<h2>Email vérifié ✅</h2><p>Bonjour {username}, votre compte est maintenant activé.</p>"
+
+# ----------------------------
+# Routes TooLink
+# ----------------------------
+@app.route('/create-link', methods=['POST'])
+def create_link():
+    client_ip = get_client_ip()
+    key = generate_key()
+    routes = load_toolink_routes()
+    while key in routes:
+        key = generate_key()
+    routes.append(key)
+    ok = save_toolink_routes(routes)
+    if ok is None:
+        return jsonify({"success": False, "error": "Failed to save to remote storage"}), 500
+
+    # associer la route à l'IP du créateur
+    owners = load_owners()
+    owners[key] = client_ip
+    save_owners(owners)
+
+    return jsonify({"success": True, "route": f"/t/{key}", "key": key})
+
+@app.route("/toolink/set_redirect", methods=["POST"])
+def set_redirect():
+    data = request.json or {}
+    key = data.get("key")
+    url = data.get("url")
+    if not key or not url:
+        return jsonify({"success": False, "error": "Key et URL requis"}), 400
+    redirects = load_redirects()
+    redirects[key] = url
+    save_redirects(redirects)
+    return jsonify({"success": True, "key": key, "url": url})
+
+@app.route("/t/<key>", methods=["GET", "POST"])
+def toolink_dynamic(key):
+    routes = load_toolink_routes()
+    if key not in routes:
+        return jsonify({"error": "Unknown TooLink key"}), 404
+
+    entry = {
+        "key": key,
+        "ip": get_client_ip(),
+        "ua": request.headers.get('User-Agent', ''),
+        "time": int(time.time() * 1000)
+    }
+
+    if request.method == "POST":
+        body = request.get_data()
+        remote_upload_file(f"data/TooLink/{key}.txt", BytesIO(body), filename=f"{key}.txt", method="PUT")
+        entry["action"] = "save"
+        append_toolink_stats(entry)
+        return jsonify({"status": "updated"}), 200
+
+    # Log de l'accès
+    entry["action"] = "hit"
+    append_toolink_stats(entry)
+
+    # -----------------------------
+    # Gestion de la redirection
+    # -----------------------------
+    redirects = load_redirects()  # doit retourner dict {key: url}
+    target_url = redirects.get(key)
+
+    if target_url:
+        # Redirection via template avec compte à rebours
+        return render_template(
+            "redirect.html",
+            key=key,
+            target_url=target_url,
+            countdown=5  # secondes avant redirection
+        )
+
+    # Si pas de redirection, renvoie le contenu habituel
+    resp = remote_get_file(f"data/TooLink/{key}.txt")
+    if resp is None or resp.status_code != 200:
+        return f"<h1>TooLink: {key}</h1><p>Ressource vide pour cette clé.</p>", 200, {"Content-Type": "text/html"}
+
+    content_type = resp.headers.get("Content-Type", "text/plain")
+    return (resp.content, resp.status_code, {"Content-Type": content_type})
+
+
+# Dashboard template
+@app.route('/toolink')
+def dashtoolink():
+    try:
+        return render_template('toolink.html')
+    except Exception:
+        return "<h2>TooLink Dashboard</h2><p>Place `toolink.html` dans templates/ pour voir le dashboard.</p>"
+
+# Endpoint pour récupérer les routes propres au client
+@app.route('/toolink/list', methods=['GET'])
+def list_routes():
+    client_ip = get_client_ip()
+    routes = load_toolink_routes()
+    owners = load_owners()
+    filtered = [k for k in routes if owners.get(k) == client_ip]
+    return jsonify({"routes": filtered})
+
+# ----------------------------
+# Initialisation TooLink
+# ----------------------------
+ensure_toolink_files()
+toolink_keys = load_toolink_routes()
+print(f"[TooLink] Routes chargées : {toolink_keys}")
 
 # ----------------------------
 # Lancement
