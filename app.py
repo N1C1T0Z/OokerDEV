@@ -490,6 +490,10 @@ def nova():
 def page_not_found(e):
     return render_template('404.html'), 404
 
+@app.route('/pibot/home')
+def pibothome():
+    return render_template('pibothome.html')
+
 from flask import send_from_directory
 
 @app.route('/favicon.ico')
